@@ -1,1 +1,1 @@
-from .camera_class import Camera
+from .camera_class import Camera, ImageHandler
