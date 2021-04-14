@@ -18,22 +18,32 @@ def bgnd_image(self,hologram,slm,camera,exposure=1,blacklevel=0):
 
 slm = SLM(monitor=1)
 cam = Camera(exposure=100,roi=[614,597,696,677])
-imager = ImageHandler()
-boss = Boss(slm,None)
+imager = ImageHandler(-1)
+# boss = Boss(slm,None)
 # test = boss.test()
 # print(test)
 
 blazing = hg.blazediag(-12)
 #lg_holo = (lgmode(219,274,0,0,50)+lgmode(219,274,2,0,50)+lgmode(219,274,4,0,50))%1
+width = 20
 
-for center in np.linspace(200,300,5):
+centers = np.linspace(220,320,51)
+np.random.shuffle(centers)
+
+for c in centers:
+    holo, center = hg.tools.hori_aper(blazing, c, width)
     # lg_holo = lgmode(219,274,1,0,width)
     # array = np.mod(blazing+lg_holo,1)
-    slm.apply_hologram(blazing)
+    slm.apply_hologram(holo)
     time.sleep(1)
     image = cam.take_image()
-    imager.save(image)
+    slm.apply_hologram(hg.blank())
     time.sleep(1)
-    # take_image(width)
-#input("Press Enter to continue...")
+    bgnd = cam.take_image()
+    image.add_background(bgnd)
+    image.add_hologram(holo)
+    image.add_property('center',center)
+    image.add_property('width',width)
+    image.add_property('pixel count',image.get_pixel_count())
+    imager.save(image)
 print("program completed")

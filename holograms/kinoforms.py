@@ -2,6 +2,11 @@
 #Modified by Dan Ruttley
 #Note that all kinoforms are returned as 512x512 images which should be padded later if needed.
 
+def blank():
+    """Returns a 512x512 hologram of all zeros."""
+    import numpy as np
+    return np.zeros((512,512))
+
 def blazedg(grad,angle):
     """
     This function takes a gradient and an angle, and produces a blazed grating phase pattern, with fronts perpendicular to the direction of the line which makes the angle given with the positive x axis, in an anticlockwise direction
