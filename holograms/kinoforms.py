@@ -1,6 +1,7 @@
 #Originally written by Mitch Walker
 #Modified by Dan Ruttley
 #Note that all kinoforms are returned as 512x512 images which should be padded later if needed.
+#Arrays are returned 0-1 with 1 being full 2pi phase modulation.
 
 def blank():
     """Returns a 512x512 hologram of all zeros."""
@@ -70,7 +71,7 @@ def blazediag(grad):
         #Convert these values into phase values based on the gradient, and modulo between 0 and 2pi
         array = (np.abs(grad)*array)%(2*np.pi)
 
-    return array
+    return array/2/np.pi
 
 def blazever(grad):
     """
@@ -96,7 +97,7 @@ def blazever(grad):
     #Conjugate the vertical array with a horizontal array of ones to create a 2D matrix
     twodimarray = vert*hor
     
-    return twodimarray
+    return twodimarray/2/np.pi
     
 def blazehor(grad):
     """
@@ -123,7 +124,7 @@ def blazehor(grad):
     #Conjugate the vertical array with a horizontal array of ones to create a 2D matrix
     twodimarray = vert*hor
     
-    return twodimarray
+    return twodimarray/2/np.pi
 
 def stepver(v1,v2,split):
     """
@@ -156,7 +157,7 @@ def stepver(v1,v2,split):
     #Multiply the two arrays
     twodim = vert*maskval
 
-    return twodim
+    return twodim/2/np.pi
 
 def stephor(v1,v2,split):
     """
@@ -189,7 +190,7 @@ def stephor(v1,v2,split):
     #Multiply the two arrays
     twodim = maskval*hor
             
-    return twodim
+    return twodim/2/np.pi
 
 def lagpol(x,p,l):
     """
@@ -294,8 +295,8 @@ def lgmode(x0,y0,p,l,w0):
                 phase[i,j] = (-l*cylincoord[i,j,1])%(2*np.pi)
             elif laguerre_vals[i,j] > 0:
                 phase[i,j] = (((-l*cylincoord[i,j,1]) + np.pi)%(2*np.pi))
-            
-    return phase
+    return phase/2/np.pi
+    # return phase
 
 def gaussian(x0,y0,w0,wlen=1024*1e-9):
     """
@@ -358,11 +359,12 @@ def gaussian(x0,y0,w0,wlen=1024*1e-9):
                 
     phase = np.empty((512,512))
     
-    return phase
+    return phase/2/np.pi
 
 def converginglens(w,f,x0,y0):
     """
-    This function generates a 2D array for a thin converging lens with focal length f
+    This function generates a 2D array for a thin converging lens with focal 
+    length f. The pixel pitch of the SLM is 15umx15um, which is why 15e-6 appears.
     
     -w is a positive float, and is the wavelength of the laser, in m
     -f is a positive float, and is the focal length of the lens the kinoform is modelling, in m
@@ -429,11 +431,12 @@ def converginglens(w,f,x0,y0):
             
     phase = phase%(2*np.pi)
     
-    return phase
+    return phase/2/np.pi
 
 def diverginglens(w,f,x0,y0):
     """
-    This function generates a 2D array for a thin diverging lens with focal length f
+    This function generates a 2D array for a thin diverging lens with focal 
+    length f.  The pixel pitch of the SLM is 15umx15um, which is why 15e-6 appears.
     
     -w is a positive float, and is the wavelength of the laser, in m
     -f is a positive float, and is the focal length of the lens the kinoform is modelling, in m
@@ -502,7 +505,7 @@ def diverginglens(w,f,x0,y0):
     
     phase = (2*np.pi) - phase
     
-    return phase
+    return phase/2/np.pi
 
 def focallength(s_two):
     """
@@ -518,3 +521,23 @@ def focallength(s_two):
     f_prime = s_one - d
     
     return f_prime
+
+def fresnel_lens(focal_plane, x0, y0, wavelength):
+    """Returns the required Fresnel hologram which moves the focal plane to the
+    required distance from the Fourier lens. The focal length of the Fourier 
+    lens is 0.5m.
+
+    Parameters:
+        focal_plane: the distance of the focal plane from the Fourier lens
+        x0: x pixel of the center of the lens
+        y0: y pixel of the center of the lens
+        wavelength: the wavelength of the light, in m
+    """
+    if focal_plane == 0.5:
+        return blank()
+    else:
+        f = focallength(focal_plane)
+        if f > 0:
+            return converginglens(wavelength, f, x0, y0)
+        else:
+            return diverginglens(wavelength, -f, x0, y0)

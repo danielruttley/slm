@@ -53,3 +53,27 @@ def vert_aper(hologram,center,width):
     masked_holo[:,:start] = 0
     masked_holo[:,end+1:] = 0
     return masked_holo, center
+
+def circ_aper(hologram,center=None,radius=None):
+    """Applies a circular aperature onto the hologram and returns a copy.
+
+    Parameters:
+        center: tuple (x0,y0) containing the center of the aperture. None to 
+                use the center of the hologram
+        radius: radius of the aperture. None for the largest circular aperture
+                that will fit on the display
+    
+    Returns:
+        masked_holo: hologram masked with the virtual aperture
+    """
+    masked_holo = hologram.copy()
+    if center is None:
+        center = (hologram.shape[1]/2,hologram.shape[0]/2)
+    if radius is None:
+        radius = min(hologram.shape[1]-center[0],center[0],
+                     hologram.shape[0]-center[1],center[1])
+    for i in range(hologram.shape[0]):
+        for j in range(hologram.shape[1]):
+            if (i-center[1])**2+(j-center[0])**2 > radius**2:
+                masked_holo[i,j] = 0
+    return masked_holo

@@ -10,15 +10,17 @@ class Camera():
     """Object which handles the taking and processing of images from the 
     ThorLabs DCC1545M-GL camera.
     """
-    def __init__(self, exposure=1, blacklevel=0, roi=None):
+    def __init__(self, exposure=1, blacklevel=0, gain=0, roi=None):
         self.exposure = exposure
         self.blacklevel = blacklevel
+        self.gain = gain
         self.set_roi(roi)
         self.cam = uc480()
         self.cam.connect()
 
         self.update_exposure(self.exposure)
         self.update_blacklevel(self.blacklevel)
+        self.update_gain(self.gain)
     
     def __del__(self):
         self.cam.disconnect()
@@ -35,6 +37,17 @@ class Camera():
         self.blacklevel = blacklevel
         self.cam.set_blacklevel(self.blacklevel)
         return self.blacklevel
+    
+    def update_gain(self,gain=None):
+        """Set and gets the gain level of the camera.
+        
+        Parameters:
+            gain: gain of the camera. Between 0 - 100.
+        """
+        if gain != None:
+            self.cam.set_gain(gain)
+        self.gain = self.cam.get_gain()
+        return self.gain
 
     def aquire(self):
         """Aquires a single array from the camera with the current settings."""
@@ -43,6 +56,8 @@ class Camera():
             array = array[self.roi[1]:self.roi[3],self.roi[0]:self.roi[2]]
         if (array == 255).sum() > 0:
             print('Warning: image saturated')
+        print(array)
+        print(np.max(array))
         array[array > 255] = 255
         return np.uint8(array)
 
@@ -70,18 +85,21 @@ class Image():
     containing the camera settings when the image was taken. Custom properties 
     can be added, which will be saved when the image is saved.
     """
-    def __init__(self,array,exposure,blacklevel,roi):
+    def __init__(self,array=None,exposure=None,blacklevel=None,roi=None):
         self.array = array
         if roi == None:
-            xmin,ymin,xmax,ymax = [0,0,self.array.shape[1],self.array.shape[0]]
+            if not (array is None):
+                xmin,ymin,xmax,ymax = [0,0,self.array.shape[1],self.array.shape[0]]
+            else:
+                xmin,ymin,xmax,ymax = None,None,None,None
         else:
             xmin,ymin,xmax,ymax = roi
         self.properties = {'exposure':exposure,
                            'blacklevel':blacklevel,
-                           'xmin':xmin,
-                           'ymin':ymin,
-                           'xmax':xmax,
-                           'ymax':ymax
+                           'roi_xmin':xmin,
+                           'roi_ymin':ymin,
+                           'roi_xmax':xmax,
+                           'roi_ymax':ymax
                           }
         self.bgnd_array = None
         self.hologram = None
@@ -112,7 +130,7 @@ class Image():
         return self.hologram
 
     def get_bgnd_corrected_array(self):
-        return 
+        return np.float32(self.array) - np.float32(self.bgnd_array)
     
     def get_pixel_count(self,correct_bgnd=True):
         if correct_bgnd:
@@ -133,6 +151,10 @@ class ImageHandler():
                      passed, this will be used as the subfolder name (without 
                      Measure prefixed)
         """
+        self.created_dirs = False
+        self.measure = measure
+
+    def create_dirs(self,measure):
         date_dir = './images/'+time.strftime('%Y/%B/%d', time.localtime())
         os.makedirs(date_dir,exist_ok=True)
 
@@ -150,10 +172,12 @@ class ImageHandler():
             else:
                 measure = 0
             self.image_dir = date_dir+'/Measure {}'.format(measure)
+        self.measure = measure
         print(self.image_dir)
         os.makedirs(self.image_dir,exist_ok=True)
         os.makedirs(self.image_dir+'/bgnds',exist_ok=True)
         os.makedirs(self.image_dir+'/holos',exist_ok=True)
+        self.created_dirs = True
         try:
             self.df = pd.read_csv(self.image_dir+'/images.csv',index_col=0)
         except:
@@ -167,6 +191,8 @@ class ImageHandler():
         """Save custom image object as a .png file and append the image 
         properties to the csv.
         """
+        if not self.created_dirs:
+            self.create_dirs(self.measure)
         array = image.get_array()
         properties = image.get_properties()
         print(properties)
