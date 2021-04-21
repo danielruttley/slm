@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import PIL.Image as PILImage
+from shutil import copyfile
 
 from .uc480 import uc480
 
@@ -139,6 +140,13 @@ class Image():
             array = np.float32(self.array)
         sum = np.int(np.sum(array))
         return sum
+    
+    def get_max_pixel(self,correct_bgnd=True):
+        if correct_bgnd:
+            array = np.float32(self.array) - np.float32(self.bgnd_array)
+        else:
+            array = np.float32(self.array)
+        return np.max(array)    
 
 class ImageHandler():
     """Deals with the saving and loading of images from the ThorLabs camera"""
@@ -175,6 +183,7 @@ class ImageHandler():
         self.measure = measure
         print(self.image_dir)
         os.makedirs(self.image_dir,exist_ok=True)
+        copyfile('main.py', self.image_dir+'/main.py')
         os.makedirs(self.image_dir+'/bgnds',exist_ok=True)
         os.makedirs(self.image_dir+'/holos',exist_ok=True)
         self.created_dirs = True

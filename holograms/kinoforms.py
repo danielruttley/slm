@@ -361,153 +361,31 @@ def gaussian(x0,y0,w0,wlen=1024*1e-9):
     
     return phase/2/np.pi
 
-def converginglens(w,f,x0,y0):
+def lens(w,f,center):
     """
-    This function generates a 2D array for a thin converging lens with focal 
-    length f. The pixel pitch of the SLM is 15umx15um, which is why 15e-6 appears.
+    This function generates a 2D array for a thin with focal length f.  
+    The pixel pitch of the SLM is 15umx15um, which is why 15e-6 appears.
     
-    -w is a positive float, and is the wavelength of the laser, in m
-    -f is a positive float, and is the focal length of the lens the kinoform is modelling, in m
-    -x0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the x direction, with 1 at the left and 512 at the right
-    -y0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the y direction, with 1 at the top and 512 at the bottom
+    Parameters:
+        w:  the wavelength of the laser, in m
+        f:  the focal length of the lens, in m. Positive for converging, 
+            negative for diverging.
+        center: a tuple containing the pixels of the center of the lens
     """
-    
-    #Import the necessary modules to run the function
     import numpy as np
     import math
-    
-    #Define the wavenumber k
+
     k = (2*np.pi)/w
-    
-    #Work out the coordinates based on the origin (x0,y0)
-    cartescoord = np.empty((512,512,2))
-    
-    for i in range(512):
-        for j in range(512):
-            cartescoord[i,j,0] = ((j) - x0) * 15*(10**-6)
-            
-            cartescoord[j,i,1] = ((j) - y0) * 15*(10**-6)
-            
-    #Convert the coordinates from Cartesian to cylindrical polar, taking z to be constant, z=0
-    cylincoord = np.empty((512,512,2))
+    x = np.arange(512)
+    y = np.arange(512)
+    xx,yy = np.meshgrid(x,y)
+    r = np.sqrt((xx-center[0])**2+(yy-center[1])**2)
+    r *= 15e-6
+    phase = (k*r**2/2/f)%(2*np.pi)
 
-    for i in range(512):
-        for j in range(512):
-            cylincoord[i,j,0] = np.sqrt((cartescoord[i,j,0]**2)+(cartescoord[i,j,1]**2))
-            
-            if j == x0:
-                if i > y0:
-                    cylincoord[i,j,1] = np.pi/2
-                elif i < y0:
-                    cylincoord[i,j,1] = (3/2)*np.pi
-                elif i == y0:
-                    cylincoord[i,j,1] = 0
-            elif i == y0:
-                if j < x0:
-                    cylincoord[i,j,1] = np.pi
-                elif j > x0:
-                    cylincoord[i,j,1] = 0
-                elif j == x0:
-                    cylincoord[i,j,1] = 0
-            elif j>x0 and i>y0:
-                cylincoord[i,j,1] = np.arctan(np.abs(cartescoord[i,j,1]/cartescoord[i,j,0]))
-            elif j<x0 and i>y0:
-                cylincoord[i,j,1] = (np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j<x0 and i<y0:
-                cylincoord[i,j,1] = np.pi + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j>x0 and i<y0:
-                cylincoord[i,j,1] = ((2)*np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-                
-            if np.isnan(cylincoord[i,j,1]) == True:
-                print("Not a number ", i, " ", j)
-                cylincoord[i,j,1] = 0
-
-    #Generate and return the phase values
-    phase = np.empty((512,512))
-    
-    for i in range(512):
-        for j in range(512):
-            phase[i,j] = (k * (cylincoord[i,j,0]**2)) / (2*f)
-            
-    phase = phase%(2*np.pi)
-    
     return phase/2/np.pi
 
-def diverginglens(w,f,x0,y0):
-    """
-    This function generates a 2D array for a thin diverging lens with focal 
-    length f.  The pixel pitch of the SLM is 15umx15um, which is why 15e-6 appears.
-    
-    -w is a positive float, and is the wavelength of the laser, in m
-    -f is a positive float, and is the focal length of the lens the kinoform is modelling, in m
-    -x0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the x direction, with 1 at the left and 512 at the right
-    -y0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the y direction, with 1 at the top and 512 at the bottom
-    """
-    
-    #Import the necessary modules to run the function
-    import numpy as np
-    import math
-    
-    #Define the wavenumber k
-    k = (2*np.pi)/w
-    
-    #Work out the coordinates based on the origin (x0,y0)
-    cartescoord = np.empty((512,512,2))
-    
-    for i in range(512):
-        for j in range(512):
-            cartescoord[i,j,0] = ((j) - x0) * 15*(10**-6)
-            
-            cartescoord[j,i,1] = ((j) - y0) * 15*(10**-6)
-            
-    #Convert the coordinates from Cartesian to cylindrical polar, taking z to be constant, z=0
-    cylincoord = np.empty((512,512,2))
-
-    for i in range(512):
-        for j in range(512):
-            cylincoord[i,j,0] = np.sqrt((cartescoord[i,j,0]**2)+(cartescoord[i,j,1]**2))
-            
-            if j == x0:
-                if i > y0:
-                    cylincoord[i,j,1] = np.pi/2
-                elif i < y0:
-                    cylincoord[i,j,1] = (3/2)*np.pi
-                elif i == y0:
-                    cylincoord[i,j,1] = 0
-            elif i == y0:
-                if j < x0:
-                    cylincoord[i,j,1] = np.pi
-                elif j > x0:
-                    cylincoord[i,j,1] = 0
-                elif j == x0:
-                    cylincoord[i,j,1] = 0
-            elif j>x0 and i>y0:
-                cylincoord[i,j,1] = np.arctan(np.abs(cartescoord[i,j,1]/cartescoord[i,j,0]))
-            elif j<x0 and i>y0:
-                cylincoord[i,j,1] = (np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j<x0 and i<y0:
-                cylincoord[i,j,1] = np.pi + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j>x0 and i<y0:
-                cylincoord[i,j,1] = ((2)*np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-                
-            if np.isnan(cylincoord[i,j,1]) == True:
-                print("Not a number ", i, " ", j)
-                cylincoord[i,j,1] = 0
-
-    #Generate and return the phase values
-    phase = np.empty((512,512))
-    
-    for i in range(512):
-        for j in range(512):
-            phase[i,j] = (k * (cylincoord[i,j,0]**2)) / (2*f)
-            
-    phase = phase%(2*np.pi)
-    
-    phase = (2*np.pi) - phase
-    
-    return phase/2/np.pi
-
-def focallength(s_two):
+def focallength(S2):
     """
     A function which takes the distance from the lens that the focal plane should be, and outputs the focal length of the lens that will correctly position the focal plane
     
@@ -516,13 +394,14 @@ def focallength(s_two):
     f = 0.5
     d = 0.45
     
-    s_one = 1/((1/f) - (1/s_two))
+    S1 = 1/((1/f) - (1/S2))
     
-    f_prime = s_one - d
+    #This was originally negative, but I think it should be this way around
+    f_prime = d - S1
     
     return f_prime
 
-def fresnel_lens(focal_plane, x0, y0, wavelength):
+def fresnel_lens(focal_plane, center, wavelength):
     """Returns the required Fresnel hologram which moves the focal plane to the
     required distance from the Fourier lens. The focal length of the Fourier 
     lens is 0.5m.
@@ -537,7 +416,5 @@ def fresnel_lens(focal_plane, x0, y0, wavelength):
         return blank()
     else:
         f = focallength(focal_plane)
-        if f > 0:
-            return converginglens(wavelength, f, x0, y0)
-        else:
-            return diverginglens(wavelength, -f, x0, y0)
+        print(f)
+        return lens(wavelength, f, center)
