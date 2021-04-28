@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.special import assoc_laguerre
 import bisect
+from .kinoforms import fresnel_lens
 
 class ComplexAmpMod():
     """Class containing the object required to make a complex amplitude 
-    modulation hologram as detailed in https://doi.org/10.1073/pnas.2014017117)
+    modulation hologram as detailed in https://doi.org/10.1073/pnas.2014017117
     """
     def __init__(self,xsize=512,ysize=512,wavelength=1064e-9):
         x = range(xsize)
@@ -37,8 +38,9 @@ class ComplexAmpMod():
             *np.exp(-1j*xi**2*z/zR)
             *np.exp(1j*(2*p+np.abs(l)+1)*np.arctan2(z,zR)))
         return amp
-    
-    def superposition_holo(self,ps,center,waist,blazing,input_waist=None):
+
+    def superposition_holo(self,ps,center,waist,blazing,input_waist=None,
+                           focal_plane=None,custom=False):
         """Generates a hologram for a superposition of radial TEMp0 modes.
 
         Parameters:
@@ -53,12 +55,17 @@ class ComplexAmpMod():
             input_waist:    the waist of the TEM00 mode being shone onto the 
                             SLM. If None, a top-hat beam is assumed (i.e. 
                             infinite waist)
+            focal_plane:    the location to shift the focal plane to. A Fresnel 
+                            lens is generated and applied to the total phase
+                            before calculating the CAM hologram. None to apply
+                            no lens.
         
         Returns:
             holo:   a complex amplitude modulation hologram between 0-1 to be 
                     applied to the SLM screen
         """
         
+
         r = np.sqrt((self.xx-center[0])**2+(self.yy-center[1])**2)
         phi = np.arctan2(self.yy-center[1],self.xx-center[0])%(2*np.pi)
 
@@ -71,12 +78,29 @@ class ComplexAmpMod():
             input_field = self.tem_field(0,0,r,phi,0,input_waist,self.wavelength)
             input_field /= np.max(input_field)
             field = field/input_field
+            A = np.abs(field)
+            super_threshold_indices = A > 1
+            A[super_threshold_indices] = 1
+        else:
+            A = np.abs(field)
+        phase = (np.angle(field))%(2*np.pi)
+        print(np.max(phase))
+        print(np.min(phase))
 
-        A = np.abs(field)
-        phase = (np.angle(field)+blazing)%(2*np.pi)
+        if focal_plane != None:
+            lens = fresnel_lens(focal_plane,center,self.wavelength)*2*np.pi
+            phase = (phase+lens)%(2*np.pi)
+
+        print(np.max(phase))
+        print(np.min(phase))
+
         print(np.max(A))
         inverse_sinc = np.vectorize(self.inverse_sinc)
         M = 1+inverse_sinc(A)/np.pi
+
+        print(np.max(M))
+        print(np.min(M))
+
         F = phase-np.pi*M
-        return M*np.mod(F,2*np.pi)/2/np.pi
+        return M*((F+blazing*2*np.pi)%(2*np.pi))/2/np.pi
     

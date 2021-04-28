@@ -298,69 +298,6 @@ def lgmode(x0,y0,p,l,w0):
     return phase/2/np.pi
     # return phase
 
-def gaussian(x0,y0,w0,wlen=1024*1e-9):
-    """
-    This function returns a 2D array of phase that would generate a Gaussian beam from a flat sheet of light with constant phase
-    
-    -x0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the x direction, with 1 at the left and 512 at the right
-    -y0 is an integer between 1 and 512, and is the position of the pixel to be taken as the origin in the y direction, with 1 at the top and 512 at the bottom
-    -w0 is a float, and is the waist of the beam in pixels
-    """
-    
-    #Import the necessary modules to run the function
-    import numpy as np
-    import math
-    
-    #Work out some important values
-    k = (2*np.pi)/wlen
-    
-    #Work out the coordinates based on the origin (x0,y0)
-    cartescoord = np.empty((512,512,2))
-    
-    for i in range(512):
-        for j in range(512):
-            cartescoord[i,j,0] = (j) - x0
-            
-            cartescoord[j,i,1] = (j) - y0
-            
-    #Convert the coordinates from Cartesian to cylindrical polar, taking z to be constant, z=0
-    cylincoord = np.empty((512,512,2))
-
-    for i in range(512):
-        for j in range(512):
-            cylincoord[i,j,0] = np.sqrt((cartescoord[i,j,0]**2)+(cartescoord[i,j,1]**2))
-            
-            if j == x0:
-                if i > y0:
-                    cylincoord[i,j,1] = np.pi/2
-                elif i < y0:
-                    cylincoord[i,j,1] = (3/2)*np.pi
-                elif i == y0:
-                    cylincoord[i,j,1] = 0
-            elif i == y0:
-                if j < x0:
-                    cylincoord[i,j,1] = np.pi
-                elif j > x0:
-                    cylincoord[i,j,1] = 0
-                elif j == x0:
-                    cylincoord[i,j,1] = 0
-            elif j>x0 and i>y0:
-                cylincoord[i,j,1] = np.arctan(np.abs(cartescoord[i,j,1]/cartescoord[i,j,0]))
-            elif j<x0 and i>y0:
-                cylincoord[i,j,1] = (np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j<x0 and i<y0:
-                cylincoord[i,j,1] = np.pi + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-            elif j>x0 and i<y0:
-                cylincoord[i,j,1] = ((2)*np.pi) + np.arctan(cartescoord[i,j,1]/cartescoord[i,j,0])
-                
-            if np.isnan(cylincoord[i,j,1]) == True:
-                print("Not a number ", i, " ", j)
-                cylincoord[i,j,1] = 0
-                
-    phase = np.empty((512,512))
-    
-    return phase/2/np.pi
-
 def lens(w,f,center):
     """
     This function generates a 2D array for a thin with focal length f.  
@@ -370,7 +307,7 @@ def lens(w,f,center):
         w:  the wavelength of the laser, in m
         f:  the focal length of the lens, in m. Positive for converging, 
             negative for diverging.
-        center: a tuple containing the pixels of the center of the lens
+        center: a tuple containing the pixels of the center of the lens (x0,y0)
     """
     import numpy as np
     import math
@@ -416,5 +353,5 @@ def fresnel_lens(focal_plane, center, wavelength):
         return blank()
     else:
         f = focallength(focal_plane)
-        print(f)
+        #print(f)
         return lens(wavelength, f, center)
