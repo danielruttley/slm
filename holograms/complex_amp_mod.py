@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import assoc_laguerre
 import bisect
-from .kinoforms import fresnel_lens
+from .lenses import focal_plane_shift
 
 class ComplexAmpMod():
     """Class containing the object required to make a complex amplitude 
@@ -88,7 +88,7 @@ class ComplexAmpMod():
         print(np.min(phase))
 
         if focal_plane != None:
-            lens = fresnel_lens(focal_plane,center,self.wavelength)*2*np.pi
+            lens = focal_plane_shift(focal_plane,center,self.wavelength)*2*np.pi
             phase = (phase+lens)%(2*np.pi)
 
         print(np.max(phase))

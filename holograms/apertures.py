@@ -1,10 +1,8 @@
 """
-Defines some tools that manipulate holograms.
+Defines apertures that can be applied to holograms.
 """
 
-#import numpy as np
-
-def hori_aper(hologram,center,width):
+def hori(hologram,center,width,return_center=False):
     """Applies a horizontal aperture onto the hologram and returns a copy. The
     center of the hologram will be moved away from the edges of the hologram so
     that the full width is always shown.
@@ -28,9 +26,12 @@ def hori_aper(hologram,center,width):
         start = 0
     masked_holo[:start,:] = 0
     masked_holo[end+1:,:] = 0
-    return masked_holo, center
+    if return_center:
+        return masked_holo, center
+    else:
+        return masked_holo
 
-def vert_aper(hologram,center,width):
+def vert(hologram,center,width,return_center=False):
     """Applies a vertical aperature onto the hologram and returns a copy.
 
     Parameters:
@@ -52,9 +53,12 @@ def vert_aper(hologram,center,width):
         start = 0
     masked_holo[:,:start] = 0
     masked_holo[:,end+1:] = 0
-    return masked_holo, center
+    if return_center:
+        return masked_holo, center
+    else:
+        return masked_holo
 
-def circ_aper(hologram,center=None,radius=None):
+def circ(hologram,center=None,radius=None):
     """Applies a circular aperature onto the hologram and returns a copy.
 
     Parameters:

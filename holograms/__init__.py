@@ -1,3 +1,5 @@
-from .kinoforms import *
+from .misc import *
 from .complex_amp_mod import ComplexAmpMod
-import holograms.tools
+import holograms.apertures
+import holograms.gratings
+import holograms.lenses
