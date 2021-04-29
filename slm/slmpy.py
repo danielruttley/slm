@@ -89,7 +89,7 @@ class SLMwindow(wx.Window):
         super().__init__(*args, **kwargs)
         
         # hide cursor
-        cursor = wx.StockCursor(wx.CURSOR_BLANK)
+        cursor = wx.Cursor(wx.CURSOR_BLANK)
         self.SetCursor(cursor) 
         
         self.img = wx.Image(*self.res)
