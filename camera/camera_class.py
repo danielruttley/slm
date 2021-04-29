@@ -71,7 +71,7 @@ class Camera():
             camera parameters.
         """
         array = self.aquire()
-        return Image(array,self.exposure,self.blacklevel,self.roi)
+        return Image(array,self.exposure,self.blacklevel,self.roi,self.gain)
 
     def set_roi(self,roi):
         """Sets the roi applied to images taken by the camera.
@@ -86,7 +86,7 @@ class Image():
     containing the camera settings when the image was taken. Custom properties 
     can be added, which will be saved when the image is saved.
     """
-    def __init__(self,array=None,exposure=None,blacklevel=None,roi=None):
+    def __init__(self,array=None,exposure=None,blacklevel=None,roi=None,gain=None):
         self.array = array
         if roi == None:
             if not (array is None):
@@ -100,7 +100,8 @@ class Image():
                            'roi_xmin':xmin,
                            'roi_ymin':ymin,
                            'roi_xmax':xmax,
-                           'roi_ymax':ymax
+                           'roi_ymax':ymax,
+                           'gain':gain
                           }
         self.bgnd_array = None
         self.hologram = None
