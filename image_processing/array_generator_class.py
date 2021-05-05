@@ -15,6 +15,30 @@ import pandas as pd
 class ArrayGenerator():
     def __init__(self,slm,camera,extra_holos=None,shape=(512,512),
                  circ_aper_center=None):
+        """Generates and iteratively improves Gerchberg Saxton holograms for 
+        arrays of Gaussian traps.
+
+        Parameters
+        ----------
+        slm : SLM
+            Initialised SLM class to display holograms on.
+        camera : Camera
+            ThorLabs DCC1545M-GL camera class to capture images with.
+        extra_holos : array, optional
+            Extra holograms in the range 0-1 to apply to any generated 
+            holograms. This will normally contain a blazed grating and perhaps 
+            a Fresnel lens.
+        shape : tuple of int
+            The resolution of the SLM in pixels (x,y).
+        circ_aper_center : tuple of float
+            The center of a circular aperture applied in a blazed grating in 
+            extra_holos. This is taken into account in the incident intensity 
+            on the SLM.
+        
+        Returns
+        -------
+        None
+        """
         self.slm = slm
         self.cam = camera
         self.shape = shape
@@ -28,11 +52,6 @@ class ArrayGenerator():
         self.psi_N = None
         
         self.generate_input_intensity()
-
-    def set_traps(self,traps):
-        self.traps = traps
-        for trap in self.traps:
-            self.T[trap] = 1
 
     def generate_input_intensity(self,waist=None,center=None):
         """Defines the Gaussian intensity incident onto the SLM and stores it 
@@ -65,32 +84,41 @@ class ArrayGenerator():
         if self.circ_aper_center is not None:
             I = hg.apertures.circ(I,self.circ_aper_center)
         self.input_intensity = I
-    
-    def _generate_aags_hologram(self,traps,iterations=20):
-        """Calculates the adaptive additive Gerchberg Saxton hologram for a 
-        given list of traps to create the Gaussian trap array.
+
+    def set_traps(self,traps):
+        """Set the location of the Gaussian traps to be used in the array.
 
         Parameters
         ----------
-        traps: list of tuple of int
-            A list containing the (y,x) coordinates of the location of the traps in
-            the imaging plane.
+        traps : list of tuple of int
+            A list containing the tuples (y,x) of the locations of the traps.
+        
+        Returns
+        -------
+        None
+        """
+        self.traps = traps
+    
+    def generate_initial_hologram(self,iterations=50):
+        """Calculates the adaptive additive Gerchberg Saxton hologram for a 
+        given list of uniform traps to create the initial Gaussian trap array 
+        before any depth optimisation.
+
+        Parameters
+        ----------
         iterations : int, optional
             The number of iterations that the AAGS algorithm should run for.
         
         Returns
         -------
-        array
-            The generated AAGS hologram.
+        None
+            The created hologram is saved to the object's array_holo parameter.
         """
-        if self.phi is None:
-            phi = (np.random.rand(*self.shape))*2*np.pi
-        else:
-            phi = self.phi
-        N = len(traps)
-        print('generating {} traps'.format(N))
-        T = self.T
-        print([num for num in list(T.flatten()) if num])
+        for trap in self.traps:
+            self.T[trap] = 1
+        N = len(self.traps)
+        print('Initial array generation: {} traps'.format(N))
+        phi = (np.random.rand(*self.shape))*2*np.pi
         prev_g = np.ones(self.shape)
 
         for i in range(iterations):
@@ -98,69 +126,126 @@ class ArrayGenerator():
             u_plane = fftshift(fft2(np.sqrt(self.input_intensity)*np.exp(1j*phi)))
             B = np.abs(u_plane)
             psi = np.angle(u_plane)
-            
-            if self.psi_N is not None:
-                psi = self.psi_N
-            elif i == N:
+            if i == N:
+                print('i==N, saving psi for all future iterations')
                 self.psi_N = psi
-                print('i=N')
+            elif i>N:
+                print('i>N, using psi from i==N')
+                psi = self.psi_N
             
             B_N = 0
-            for trap in traps:
+            for trap in self.traps:
                 B_N += B[trap]
             B_N /= N
             
             g = np.zeros(self.shape)
-            for trap in traps:
+            for trap in self.traps:
                 g[trap] = B_N/B[trap]*prev_g[trap]
-            B = T*g
-            B = T
+            B = self.T*g
             prev_g = g
-            #print([num for num in list(B.flatten()) if num])
             x_plane = ifft2(ifftshift(B * np.exp(1j*psi)))
             phi = np.angle(x_plane)
-
-        if self.circ_aper_center is not None:
-            phi = hg.apertures.circ(phi,self.circ_aper_center)
+        if self.psi_N is None:
+            print('Warning: did not run for more iterations than traps.')
+            print('Saving the last generated psi as psi_N.')
+            self.psi_N = psi
         self.phi = phi
-        return (phi%(2*np.pi))/2/np.pi
-    
-    def generate_array_holo(self,iterations=50):
-        self.array_holo = self._generate_aags_hologram(self.traps,iterations)     
-    
+        print(self.phi)
+        self.array_holo = (phi%(2*np.pi))/2/np.pi
+        if self.circ_aper_center is not None:
+            self.array_holo = hg.apertures.circ(self.array_holo,self.circ_aper_center)
         if self.extra_holos is not None:
             self.array_holo = (self.array_holo+self.extra_holos)%1
 
-    def get_trap_depths(self,reps=1,plot=False,iterations=50):
+    def get_trap_depths(self,reps=1,plot=False):
+        """Applies the pre-generated hologram onto the SLM and uses the 
+        pre-obtained trap_df to fit Gaussians to each of the traps in the 
+        array.
+
+        Parameters
+        ----------
+        reps : int, optional
+            The number of times the hologram should be applied before the 
+            resultant trap depths are averaged and saved.
+        plot : bool, optional
+            Whether the camera image and the fitted array should be plotted 
+            each time the array is fitted.
+
+        Returns
+        -------
+        None
+            The resultant trap depths are saved in the object's trap_df
+            parameter.
+        """
+
         I0ss = []
         for i in range(reps):
-            self.generate_array_holo(iterations)
             self.slm.apply_hologram(self.array_holo)
-            time.sleep(0.1)
+            time.sleep(0.5)
             self.cam.auto_gain_exposure()
             image = self.cam.take_image()
-            time.sleep(0.1)
             self.slm.apply_hologram(hg.blank())
+            time.sleep(0.5)
             bgnd = self.cam.take_image()
             image.add_background(bgnd)
             array = image.get_bgnd_corrected_array()
             I0s = self.find_traps_df(array,plot)
-            max_I0 = max(I0s)
-            I0s = [x/max_I0 for x in I0s]
             I0ss.append(I0s)
         I0ss = np.asarray(I0ss)
         I0s = np.average(I0ss, axis=0)
-        I0s /= np.max(I0s)
         I0s = list(I0s)
         self.trap_df['I0'] = I0s
 
-    def correct_trap_depths(self):
+    def generate_corrected_hologram(self,iterations=50):
+        """Calculates the corrected adaptive additive Gerchberg Saxton hologram
+        using the measured trap depths to aim for a more uniform trap array.
+
+        Parameters
+        ----------
+        iterations : int, optional
+            The number of iterations that the AAGS algorithm should run for.
+        
+        Returns
+        -------
+        None
+            The created hologram is saved to the object's array_holo parameter.
+        """
         I0_N = self.trap_df['I0'].mean()
         for i, row in self.trap_df.iterrows():
             x = int(row['holo_x'])
             y = int(row['holo_y'])
             trap = (y,x)
             self.T[trap] *= np.sqrt(I0_N/row['I0'])
+        N = len(self.traps)
+        print('Corrected array generation: {} traps'.format(N))
+        prev_g = np.ones(self.shape)
+        phi = self.phi
+
+        for i in range(iterations):
+            print(i)
+            u_plane = fftshift(fft2(np.sqrt(self.input_intensity)*np.exp(1j*phi)))
+            B = np.abs(u_plane)
+            print('Using psi from i==N')
+            psi = self.psi_N
+            
+            B_N = 0
+            for trap in self.traps:
+                B_N += B[trap]/self.T[trap]
+            B_N /= N
+            
+            g = np.zeros(self.shape)
+            for trap in self.traps:
+                g[trap] = (B_N/B[trap]*self.T[trap])*prev_g[trap]
+            B = self.T*g
+            prev_g = g
+            x_plane = ifft2(ifftshift(B * np.exp(1j*psi)))
+            phi = np.angle(x_plane)
+        self.phi = phi
+        self.array_holo = (phi%(2*np.pi))/2/np.pi
+        if self.circ_aper_center is not None:
+            self.array_holo = hg.apertures.circ(self.array_holo,self.circ_aper_center)
+        if self.extra_holos is not None:
+            self.array_holo = (self.array_holo+self.extra_holos)%1
 
     def gaussian2D(self,xy_tuple,amplitude,x0,y0,wx,wy,theta):
         (x,y) = xy_tuple
