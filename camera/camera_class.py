@@ -81,6 +81,30 @@ class Camera():
         """
         self.roi = roi
 
+    def auto_gain_exposure(self):
+        exposure = self.update_exposure()
+        gain = self.update_gain()
+        while True:
+            image = self.take_image()
+            max_pixel = image.get_max_pixel(correct_bgnd=False)
+            print(exposure,gain,max_pixel)
+            if max_pixel < 200:
+                if exposure < 85:
+                    exposure *= 1.1
+                else:
+                    gain *= 1.1
+            elif max_pixel > 240:
+                if gain > 0.1:
+                    gain *= 0.9
+                else:
+                    exposure *= 0.9
+            else:
+                break
+            exposure = self.update_exposure(exposure)
+            gain = self.update_gain(gain)
+        
+        return exposure, gain
+
 class Image():
     """Custom image object containing the array as well as a dictionary 
     containing the camera settings when the image was taken. Custom properties 
@@ -147,7 +171,12 @@ class Image():
             array = np.float32(self.array) - np.float32(self.bgnd_array)
         else:
             array = np.float32(self.array)
-        return np.max(array)    
+        return np.max(array)
+
+    def apply_calibration(self,calibration):
+        self.array = np.float32(self.array)/calibration
+        if self.bgnd_array is not None:
+            self.bgnd_array = np.float32(self.bgnd_array)/calibration
 
 class ImageHandler():
     """Deals with the saving and loading of images from the ThorLabs camera"""
