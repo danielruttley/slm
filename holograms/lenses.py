@@ -1,6 +1,7 @@
 """Creates lens holograms shift the focal plane after the Fourier lens."""
 
 import numpy as np
+from .misc import blank
 
 def lens(w,f,center,pixel_size=15e-6):
     """Generates a 2D array for a thin lens with focal length f.  
@@ -53,7 +54,7 @@ def focal_plane_shift(focal_plane,center,wavelength=1064e-9,f_lens=0.5,d_lens=0.
         the distance from the SLM to the Fourier lens, in meters
     """
     if focal_plane == 0.5:
-        return holograms.blank()
+        return blank()
     else:
         S1 = 1/((1/f_lens) - (1/focal_plane))
         f_prime = d_lens - S1

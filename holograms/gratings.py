@@ -51,7 +51,7 @@ def vert(grad):
     hor = np.arange(0,512,1)
     
     #Convert these values into phase values based on the gradient, and modulo between 0 and 2pi
-    hor = (np.abs(grad)*hor)%(2*np.pi)
+    hor = (grad*hor)%(2*np.pi)
     
     #Make a vertical n by 1 matrix to conjugate the phase values with
     vert = np.ones((512,1))
