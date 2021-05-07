@@ -5,7 +5,6 @@ class manages the SLM and camera together to iteratively improve the hologram.
 import time
 import numpy as np
 import pandas as pd
-import cv2
 import matplotlib.pyplot as plt
 
 from scipy.fft import fft2,ifft2,fftshift,ifftshift
@@ -288,83 +287,6 @@ class ArrayGenerator():
         g = amplitude*np.exp( - (a*((x-x0)**2) + 2*b*(x-x0)*(y-y0) 
                                 + c*((y-y0)**2)))
         return g.ravel()
-
-    def find_traps_cv(self,array,plot=False):
-        min_distance_between_traps = 30
-        super_threshold_indices = array < 0
-        array[super_threshold_indices] = 0
-        img = np.uint8(array)
-        blurred_img = cv2.GaussianBlur(img,(3,3),1)
-        cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
-
-        (thresh, bwimg) = cv2.threshold(blurred_img, 20, 255, cv2.THRESH_BINARY)
-
-        circles = cv2.HoughCircles(bwimg,cv2.HOUGH_GRADIENT,1,min_distance_between_traps,
-                                    param1=200,param2=8,minRadius=10,maxRadius=20)
-
-        circles = np.uint16(np.around(circles))
-        for i in circles[0,:]:
-            cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
-            cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-        if plot:
-            cv2.imshow('detected circles',cimg)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-        popts = []
-        for i,circle in enumerate(circles[0]):
-            print(i)
-            x0,y0,r = circle
-            print(x0,y0)
-            xmin = max(round(x0-min_distance_between_traps*0.75),0)
-            xmax = min(round(x0+min_distance_between_traps*0.75),array.shape[1])
-            ymin = max(round(y0-min_distance_between_traps*0.75),0)
-            ymax = min(round(y0+min_distance_between_traps*0.75),array.shape[0])
-            print(xmin,ymin,xmax,ymax)
-            roi = array[ymin:ymax,xmin:xmax]
-            max_val = np.max(array)
-            x,y = np.meshgrid(np.arange(xmin,xmax),np.arange(ymin,ymax))
-            cam_roi = self.cam.get_roi()
-            if cam_roi is not None:
-                x += cam_roi[0]
-                y += cam_roi[1]
-            popt, pcov = curve_fit(self.gaussian2D, (x,y), roi.ravel(), p0=[max_val,x0,y0,r,r,0])#,0])
-            popts.append(popt)
-            perr = np.sqrt(np.diag(pcov))
-            data_fitted = self.gaussian2D((x,y),*popt).reshape(roi.shape[0],roi.shape[1])
-            for arg,val,err in zip(self.gaussian2D.__code__.co_varnames[2:],popt,perr):
-                prec = floor(log10(err))
-                err = round(err/10**prec)*10**prec
-                val = round(val/10**prec)*10**prec
-                if prec > 0:
-                    valerr = '{:.0f}({:.0f})'.format(val,err)
-                else:
-                    valerr = '{:.{prec}f}({:.0f})'.format(val,err*10**-prec,prec=-prec)
-                print(arg,'=',valerr)
-
-            print('\n')
-
-        if plot:
-            fitted_img = np.zeros_like(array)
-            x, y = np.meshgrid(np.arange(array.shape[1]), range(array.shape[0]))
-            for popt in popts:
-                fitted_img += self.gaussian2D((x,y),*popt).reshape(array.shape[0],array.shape[1])
-
-            fig, (ax1,ax2) = plt.subplots(1, 2)
-            fig.set_size_inches(9, 5)
-            fig.set_dpi(100)
-            c1 = ax1.pcolormesh(x,y,array,cmap=plt.cm.gray,shading='auto')
-            ax1.invert_yaxis()
-            ax1.set_title('camera image')
-            fig.colorbar(c1,ax=ax1,label='pixel count')
-            c2 = ax2.pcolormesh(x,y,fitted_img,cmap=plt.cm.viridis,shading='auto')
-            ax2.invert_yaxis()
-            ax2.set_title('fitted array')
-            fig.colorbar(c2,ax=ax2,label='intensity (arb.)')
-            fig.tight_layout()
-            plt.show()
-        
-        return popts
 
     def find_traps_df(self,array,plot=False,width=15,min_distance_between_traps=30):
         popts = []
