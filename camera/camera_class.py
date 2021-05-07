@@ -259,3 +259,6 @@ class ImageHandler():
     
     def get_dir(self):
         return self.image_dir
+
+    def get_last_index(self):
+        return self.df.index[-1]

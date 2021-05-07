@@ -200,8 +200,8 @@ class ArrayGenerator():
             The resultant trap depths are saved in the object's trap_df
             parameter.
         """
-
-        I0ss = []
+        poptss = []
+        perrss = []
         for i in range(reps):
             self.slm.apply_hologram(self.array_holo)
             time.sleep(0.5)
@@ -216,13 +216,17 @@ class ArrayGenerator():
             image.add_property('intensity_correction_iteration',self.intensity_correction_iteration)
             image.add_property('rep',i)
             self.imager.save(image)
-            I0s = self.find_traps_df(array,plot)
-            I0ss.append(I0s)
-        I0ss = np.asarray(I0ss)
-        I0s = np.average(I0ss, axis=0)
-        I0s = list(I0s)
-        self.trap_df['I0'] = I0s
-        self.trap_df['I0_'+str(self.intensity_correction_iteration)] = self.trap_df['I0']
+            popts,perrs = self.find_traps(array,plot)
+            poptss.append(popts)
+            perrss.append(perrs)
+        popts = np.average(np.asarray(poptss), axis=0).T.tolist()
+        perrs = np.average(np.asarray(perrss), axis=0).T.tolist()
+        print(popts,perrs)
+        for arg,popt,perr in zip(self.gaussian2D.__code__.co_varnames[2:],popts,perrs):
+            self.trap_df[arg] = popt
+            self.trap_df[arg+'_err'] = perr
+            self.trap_df[arg+'_'+str(self.intensity_correction_iteration)] = self.trap_df[arg]
+            self.trap_df[arg+'_err_'+str(self.intensity_correction_iteration)] = self.trap_df[arg+'_err']
         self.save_trap_df()
 
     def generate_corrected_hologram(self,iterations=50):
@@ -277,20 +281,20 @@ class ArrayGenerator():
         if self.extra_holos is not None:
             self.array_holo = (self.array_holo+self.extra_holos)%1
 
-    def gaussian2D(self,xy_tuple,amplitude,x0,y0,wx,wy,theta):
+    def gaussian2D(self,xy_tuple,I0,x0,y0,wx,wy,theta):
         (x,y) = xy_tuple
         sigma_x = wx/2
         sigma_y = wy/2 #function defined in terms of sigmax, sigmay
         a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
         b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
         c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = amplitude*np.exp( - (a*((x-x0)**2) + 2*b*(x-x0)*(y-y0) 
+        g = I0*np.exp( - (a*((x-x0)**2) + 2*b*(x-x0)*(y-y0) 
                                 + c*((y-y0)**2)))
         return g.ravel()
 
-    def find_traps_df(self,array,plot=False,width=15,min_distance_between_traps=30):
+    def find_traps(self,array,plot=False,width=15,min_distance_between_traps=30):
         popts = []
-        I0s = []
+        perrs = []
         cam_roi = self.cam.get_roi()
         for i, row in self.trap_df.iterrows():
             print(i)
@@ -320,12 +324,10 @@ class ArrayGenerator():
             # plt.pcolormesh(x,y,roi)
             # plt.colorbar()
             # plt.show()
-            popt, pcov = curve_fit(self.gaussian2D, (x,y), roi.ravel(), p0=[max_val,x0,y0,r,r,0])#,0])
-            popts.append(popt)
-            I0s.append(popt[0])
-            self.trap_df.loc[i,'img_x'] = popt[1]
-            self.trap_df.loc[i,'img_y'] = popt[2]
+            popt, pcov = curve_fit(self.gaussian2D, (x,y), roi.ravel(), p0=[max_val,x0,y0,r,r,0])
             perr = np.sqrt(np.diag(pcov))
+            popts.append(popt)
+            perrs.append(perr)
             data_fitted = self.gaussian2D((x,y),*popt).reshape(roi.shape[0],roi.shape[1])
             for arg,val,err in zip(self.gaussian2D.__code__.co_varnames[2:],popt,perr):
                 prec = floor(log10(err))
@@ -360,7 +362,7 @@ class ArrayGenerator():
             fig.colorbar(c2,ax=ax2,label='intensity (arb.)')
             fig.tight_layout()
             plt.show()
-        return I0s
+        return popts,perrs
 
     def get_single_trap_coords(self):
         cam_roi = self.cam.get_roi()
