@@ -81,6 +81,9 @@ class Camera():
         """
         self.roi = roi
 
+    def get_roi(self):
+        return self.roi
+
     def auto_gain_exposure(self):
         exposure = self.update_exposure()
         gain = self.update_gain()
@@ -92,10 +95,10 @@ class Camera():
                 if exposure < 85:
                     exposure *= 1.1
                 else:
-                    gain *= 1.1
+                        gain += 1
             elif max_pixel > 240:
-                if gain > 0.1:
-                    gain *= 0.9
+                if gain > 1:
+                    gain -= 1
                 else:
                     exposure *= 0.9
             else:
@@ -192,7 +195,9 @@ class ImageHandler():
         self.created_dirs = False
         self.measure = measure
 
-    def create_dirs(self,measure):
+    def create_dirs(self,measure=None):
+        if measure is None:
+            measure = self.measure
         date_dir = './images/'+time.strftime('%Y/%B/%d', time.localtime())
         os.makedirs(date_dir,exist_ok=True)
 
@@ -251,3 +256,6 @@ class ImageHandler():
             blue = np.uint8(np.zeros(holo.shape))
             rgb = np.dstack((red,green,blue))
             PILImage.fromarray(rgb,"RGB").save(holo_filepath)
+    
+    def get_dir(self):
+        return self.image_dir
