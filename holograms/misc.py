@@ -4,8 +4,9 @@
 #Arrays are returned 0-1 with 1 being full 2pi phase modulation.
 
 import numpy as np
+from PIL import Image
 
-def blank(size=(512,512)):
+def blank(phase=0,size=(512,512)):
     """Returns a 512x512 hologram of all zeros.
     
     Parameters
@@ -14,7 +15,7 @@ def blank(size=(512,512)):
         size of the hologram (xsize,ysize)
     """
     (xsize,ysize) = size
-    return np.zeros((ysize,xsize))
+    return np.ones((ysize,xsize))*phase/2/np.pi
 
 def stepver(v1,v2,split):
     """
@@ -187,3 +188,53 @@ def lgmode(x0,y0,p,l,w0):
                 phase[i,j] = (((-l*cylincoord[i,j,1]) + np.pi)%(2*np.pi))
     return phase/2/np.pi
     # return phase
+
+def save(hologram,filename):
+    hologram = np.uint16(hologram*65535)
+    red = np.uint8(hologram % 256)
+    green = np.uint8((hologram - red)/256)
+    blue = np.uint8(np.zeros(hologram.shape))
+    rgb = np.dstack((red,green,blue))
+    image = Image.fromarray(rgb,"RGB")
+    image.save(filename)
+
+def load(filename):
+    image = Image.open(filename)
+    array = np.array(image)
+    red = array[:,:,0]
+    green = array[:,:,1]
+    holo = red+green*256
+    return holo/65535
+
+def translate(holo,shift):
+    """
+    Returns a hologram that has been translated on the SLM screen. Empty pixels
+    are filled with zero.
+
+    Parameters
+    ----------
+    holo : array of float
+        hologram to translate
+    shift : tuple of int
+        amount to shift the hologram (xshift,yshift)
+    
+    Returns
+    -------
+    array
+        translated hologram
+    """
+    shifted_holo = holo.copy()
+    (xshift,yshift) = shift
+    if xshift < 0:
+        shifted_holo = shifted_holo[:,-xshift:]
+        shifted_holo = np.pad(shifted_holo,((0,0),(0,-xshift)))
+    elif xshift > 0:
+        shifted_holo = shifted_holo[:,:-xshift]
+        shifted_holo = np.pad(shifted_holo,((0,0),(xshift,0)))
+    if yshift < 0:
+        shifted_holo = shifted_holo[-yshift:,:]
+        shifted_holo = np.pad(shifted_holo,((0,-yshift),(0,0)))
+    elif yshift > 0:
+        shifted_holo = shifted_holo[:-yshift,:]
+        shifted_holo = np.pad(shifted_holo,((yshift,0),(0,0)))
+    return shifted_holo
