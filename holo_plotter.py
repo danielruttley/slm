@@ -7,17 +7,12 @@ center = (288,227)
 waist = 336
 
 complex_amp_mod = hg.ComplexAmpMod()
-
 blazing = hg.gratings.diag_old(-12)
 focal_planes = np.linspace(0.4,0.8,201)
-#np.random.shuffle(focal_planes)
 center = (288,227)
-
 
 holo = complex_amp_mod.superposition_holo([0,2,4],center,78,blazing,336,0.614)
 holo = hg.apertures.circ(holo,center)
-    
-print("program completed")
 
 cmap='twilight_shifted'
 fig,ax1 = plt.subplots(1,1)
