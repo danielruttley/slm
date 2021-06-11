@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import numpy as np
 import pandas as pd
 import PIL.Image as PILImage
@@ -183,17 +184,27 @@ class Image():
 
 class ImageHandler():
     """Deals with the saving and loading of images from the ThorLabs camera"""
-    def __init__(self,measure=None):
+    def __init__(self,measure=None,measure_params=None):
         """Creates the directory to save images in.
 
-        Parameters:
-            measure: the measure number to assign. -1 to append to the last 
-                     measure, and None to create a new measure. If a string is
-                     passed, this will be used as the subfolder name (without 
-                     Measure prefixed)
+        Parameters
+        ----------
+        measure: int or None or str
+            the measure number to assign. -1 to append to the last 
+            measure, and None to create a new measure. If a string is
+            passed, this will be used as the subfolder name (without 
+            Measure prefixed)
+        measure_params : dict or None
+            other parameters to save about the measure in a json called 
+            params.json in the measure folder
+        
+        Returns
+        -------
+        None
         """
         self.created_dirs = False
         self.measure = measure
+        self.measure_params = measure_params
 
     def create_dirs(self,measure=None):
         if measure is None:
@@ -226,6 +237,9 @@ class ImageHandler():
             self.df = pd.read_csv(self.image_dir+'/images.csv',index_col=0)
         except:
             self.df = pd.DataFrame()
+        if self.measure_params is not None:
+            with open(self.image_dir+'/params.json', 'w') as f:
+                json.dump(self.measure_params, f, sort_keys=True, indent=4)
 
     def show_image(self,image):
         plt.imshow(image, cmap='gray', vmin=0, vmax=255)
