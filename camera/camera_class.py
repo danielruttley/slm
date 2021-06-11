@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import json
 import numpy as np
@@ -23,7 +24,7 @@ class Camera():
         self.update_exposure(self.exposure)
         self.update_blacklevel(self.blacklevel)
         self.update_gain(self.gain)
-    
+        
     def __del__(self):
         self.cam.disconnect()
     
@@ -229,7 +230,7 @@ class ImageHandler():
         self.measure = measure
         print(self.image_dir)
         os.makedirs(self.image_dir,exist_ok=True)
-        copyfile('main.py', self.image_dir+'/main.py')
+        copyfile(sys.argv[0], self.image_dir+'\\'+sys.argv[0].split('\\')[-1])
         os.makedirs(self.image_dir+'/bgnds',exist_ok=True)
         os.makedirs(self.image_dir+'/holos',exist_ok=True)
         self.created_dirs = True
