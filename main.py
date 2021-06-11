@@ -7,7 +7,7 @@ import time
 from slm import SLM
 from camera import Camera, ImageHandler
 import holograms as hg
-from image_processing import ArrayGenerator
+from arrays import ArrayGenerator
 
 import logging
 logging.basicConfig(filename=r'Z:\Tweezer\Code\Python 3.7\slm\run2.log',level=logging.WARNING,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
