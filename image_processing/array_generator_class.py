@@ -17,7 +17,8 @@ from .image_loading import load_traps_from_image
 
 class ArrayGenerator():
     def __init__(self,slm,camera,image_handler,extra_holos=None,
-                 shape=(512,512),circ_aper_center=None):
+                 shape=(512,512),circ_aper_center=None,circ_aper_radius=None,
+                 calibration_blazing=None):
         """Generates and iteratively improves Gerchberg Saxton holograms for 
         arrays of Gaussian traps.
 
@@ -47,7 +48,9 @@ class ArrayGenerator():
         self.imager = image_handler
         self.shape = shape
         self.circ_aper_center = circ_aper_center
+        self.circ_aper_radius = circ_aper_radius
         self.extra_holos = extra_holos
+        self.calibration_blazing = calibration_blazing
 
         self.intensity_correction_iteration = 0
 
@@ -91,7 +94,7 @@ class ArrayGenerator():
             I = np.exp(-2*r**2/waist**2)
             I = I/np.max(I)
         if self.circ_aper_center is not None:
-            I = hg.apertures.circ(I,self.circ_aper_center)
+            I = hg.apertures.circ(I,self.circ_aper_center,self.circ_aper_radius)
         self.input_intensity = I
 
     def set_traps(self,traps):
@@ -173,7 +176,7 @@ class ArrayGenerator():
         self.phi = phi
         holo = (phi%(2*np.pi))/2/np.pi
         if self.circ_aper_center is not None:
-            holo = hg.apertures.circ(holo,self.circ_aper_center)
+            holo = hg.apertures.circ(holo,self.circ_aper_center,self.circ_aper_radius)
         if self.extra_holos is not None:
             holo = (holo+self.extra_holos)%1
         if save_to_param:
@@ -216,6 +219,8 @@ class ArrayGenerator():
             image.add_property('intensity_correction_iteration',self.intensity_correction_iteration)
             image.add_property('rep',i)
             self.imager.save(image)
+            if self.calibration_blazing is not None:
+                self.take_calibration_image()
             popts,perrs = self.find_traps(array,plot)
             poptss.append(popts)
             perrss.append(perrs)
@@ -277,7 +282,7 @@ class ArrayGenerator():
         self.phi = phi
         self.array_holo = (phi%(2*np.pi))/2/np.pi
         if self.circ_aper_center is not None:
-            self.array_holo = hg.apertures.circ(self.array_holo,self.circ_aper_center)
+            self.array_holo = hg.apertures.circ(self.array_holo,self.circ_aper_center,self.circ_aper_radius)
         if self.extra_holos is not None:
             self.array_holo = (self.array_holo+self.extra_holos)%1
 
@@ -455,3 +460,19 @@ class ArrayGenerator():
             except IndexError:
                 pass
         self.save_trap_df()
+
+    def take_calibration_image(self):
+        for i in range(5):
+            holo = self.calibration_blazing
+            #holo = hg.apertures.circ(holo,self.circ_aper_center,self.circ_aper_radius)
+            self.slm.apply_hologram(holo)
+            time.sleep(0.5)
+            image = self.cam.take_image()
+            self.slm.apply_hologram(hg.blank())
+            time.sleep(0.5)
+            bgnd = self.cam.take_image()
+            image.add_background(bgnd)
+            pixel_sum = image.get_pixel_count()
+            image.add_property('intensity_correction_iteration',self.intensity_correction_iteration)
+            image.add_property('calibration_pixel_sum',pixel_sum)
+            self.imager.save(image)
