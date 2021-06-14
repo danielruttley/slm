@@ -2,7 +2,7 @@
 images/
 .vscode/
 *.dll
-plotter.py
+analysis scripts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
