@@ -10,14 +10,15 @@ class SLM():
 
     def __init__(self,monitor=1,lut=r"./ScaledLutModel.txt",image_lock=True):
         """
-        Parameters:
-            monitor: int
-                the monitor to display the holograms on
-            lut: str
-                the filename of the SLM lookup table. Each row of this file 
-                should have the corresponding phase and voltage values
-            image_lock: bool
-                should the program lock until the SLM image is updated
+        Parameters
+        ----------
+        monitor : int
+            the monitor to display the holograms on
+        lut : str
+            the filename of the SLM lookup table. Each row of this file 
+            should have the corresponding phase and voltage values
+        image_lock : bool
+            should the program lock until the SLM image is updated
         """
         self.slm = SLMdisplay(monitor=monitor,isImageLock=image_lock)
         self.x_size, self.y_size = self.slm.getSize()
@@ -37,9 +38,11 @@ class SLM():
         """Applies a hologram to the SLM display after applying the lookup 
         table and padding the image.
 
-        Parameter:
-        hologram: a 2D array of values from 0-1 to be applied in the top-left
-                  of the SLM screen, representing phase modulation from 0-2pi
+        Parameter
+        ---------
+        hologram : array of float
+            a 2D array of values from 0-1 to be applied in the top-left
+            of the SLM screen, representing phase modulation from 0-2pi
         """
         hologram = np.uint16(hologram*65535)
         if self.lut != None:
@@ -63,9 +66,10 @@ class SLM():
         blue channel, which is ignored by the SLM). Originally written by 
         Mitch Walker.
 
-        Parameter:
-        hologram: a 2D array of 16bit voltage values to be applied to the SLM 
-                  screen
+        Parameter
+        ---------
+        hologram : array of int 
+            a 2D array of 16bit voltage values to be applied to the SLM screen
         """          
         red = np.uint8(hologram % 256)
         green = np.uint8((hologram - red)/256)
