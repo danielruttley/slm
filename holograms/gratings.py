@@ -2,11 +2,10 @@
 
 import numpy as np
 
-def grating(period,angle,shape=(512,512),origin=None):
+def grating(period=7,angle=0,shape=(512,512)):#,origin=None):
     """
     This function generates a 2D striped grating pattern, with 
-    phase ramp normal to y=tan(theta)*x. The grating is offset such that the 
-    phase is equal to zero at the specified origin (the center by default).
+    phase ramp normal to y=tan(theta)*x.
     
     Parameters
     ----------
@@ -17,17 +16,13 @@ def grating(period,angle,shape=(512,512),origin=None):
         perpendicular to
     shape : tuple of int, optional
         shape of the SLM holograms (x,y)
-    origin : tuple of int, optional
-        pixel at which the grating phase should be zero (x0,y0). Defaults to 
-        the center of the hologram if not specified.
     
     Returns
     -------
     array
         blazed grating hologram normalised between 0 - 1
     """
-    if origin is None:
-        origin = (int(shape[0]/2),int(shape[1]/2))
+    origin = (int(shape[0]/2),int(shape[1]/2))
     x = range(-origin[0],shape[0]-origin[0])
     y = range(-origin[1],shape[1]-origin[1])
     xx,yy = np.meshgrid(x,y)

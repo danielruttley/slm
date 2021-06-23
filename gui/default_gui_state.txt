@@ -1,0 +1,1 @@
+[{'orientation': 'horizontal', 'x size': 512, 'y size': 512, 'pixel size (m)': 1.5e-05, 'monitor': 0, 'beam x0': 251, 'beam y0': 265, 'beam waist (pixels)': 215, 'wavelength': 1.064e-06}, [['grating', {'period': 7, 'angle': 0}], ['lens', {'f': 20, 'x0': 251, 'y0': 265}], ['circular aperture', {'x0': 251, 'y0': 265, 'radius': 247}]]]

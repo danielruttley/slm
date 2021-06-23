@@ -6,7 +6,7 @@
 import numpy as np
 from PIL import Image
 
-def blank(phase=0,size=(512,512)):
+def blank(phase=0,shape=(512,512)):
     """Returns a 512x512 hologram of all zeros.
     
     Parameters
@@ -14,7 +14,7 @@ def blank(phase=0,size=(512,512)):
     size : tuple of int
         size of the hologram (xsize,ysize)
     """
-    (xsize,ysize) = size
+    (xsize,ysize) = shape
     return np.ones((ysize,xsize))*phase/2/np.pi
 
 def save(hologram,filename):

@@ -2,20 +2,25 @@
 Defines apertures that can be applied to holograms.
 """
 
-def hori(hologram,center,width,return_center=False):
-    """Applies a horizontal aperture onto the hologram and returns a copy. The
-    center of the hologram will be moved away from the edges of the hologram so
-    that the full width is always shown.
+def hori(hologram,y0=256,width=50):#,return_center=False):
+    """
+    Applies an aperature onto the hologram and returns a copy. If y0
+    is too small or large so that the entire aperture cannot be displayed, x0
+    will be modified to allow this to happen.
     
-    Parameters:
-        center: vertical center of the aperture (starting from the top)
-        width: width of the aperture
+    Parameters
+    ----------
+    y0 : float
+        center of the aperture on the SLM
+    width : float 
+        width of the aperture in SLM pixels
     
-    Returns:
-        masked_holo: hologram masked with the virtual aperture
-        center: horizontal center of the aperture (in case this has changed)
+    Returns
+    -------
+    masked_holo: hologram masked with the virtual aperture
     """
     masked_holo = hologram.copy()
+    center = y0
     if center < width/2:
         center = width/2
     if center > hologram.shape[0]-width/2:
@@ -26,23 +31,31 @@ def hori(hologram,center,width,return_center=False):
         start = 0
     masked_holo[:start,:] = 0
     masked_holo[end+1:,:] = 0
-    if return_center:
-        return masked_holo, center
-    else:
-        return masked_holo
+    return masked_holo
+    # if return_center:
+    #     return masked_holo, center
+    # else:
 
-def vert(hologram,center,width,return_center=False):
-    """Applies a vertical aperature onto the hologram and returns a copy.
 
-    Parameters:
-        center: horizontal center of the aperture (starting from the left)
-        width: width of the aperture
+def vert(hologram,x0=256,width=50):#,return_center=False):
+    """
+    Applies an aperature onto the hologram and returns a copy. If x0
+    is too small or large so that the entire aperture cannot be displayed, x0
+    will be modified to allow this to happen.
+
+    Parameters
+    ----------
+    x0 : float
+        center of the aperture on the SLM
+    width : float 
+        width of the aperture in SLM pixels
     
-    Returns:
-        masked_holo: hologram masked with the virtual aperture
-        center: horizontal center of the aperture (in case this has changed)
+    Returns
+    -------
+    masked_holo: hologram masked with the virtual aperture
     """
     masked_holo = hologram.copy()
+    center = x0
     if center < width/2:
         center = width/2
     if center > hologram.shape[1]-width/2:
@@ -53,26 +66,35 @@ def vert(hologram,center,width,return_center=False):
         start = 0
     masked_holo[:,:start] = 0
     masked_holo[:,end+1:] = 0
-    if return_center:
-        return masked_holo, center
-    else:
-        return masked_holo
+    return masked_holo
+    # if return_center:
+    #     return masked_holo, center
+    # else:
+        
 
-def circ(hologram,center=None,radius=None):
-    """Applies a circular aperature onto the hologram and returns a copy.
+def circ(hologram,x0=None,y0=None,radius=None):
+    """
+    Applies a circular aperature onto the hologram and returns a copy.
 
-    Parameters:
-        center: tuple (x0,y0) containing the center of the aperture. None to 
-                use the center of the hologram
-        radius: radius of the aperture. None for the largest circular aperture
-                that will fit on the display
+    Parameters
+    ----------
+    x0,y0 : int 
+        center of the aperture on the SLM display. 
+        None to use the center of the hologram
+    radius : float
+        radius of the aperture. None for the largest circular aperture
+        that will fit on the display
     
-    Returns:
+    Returns
+    -------
         masked_holo: hologram masked with the virtual aperture
     """
     masked_holo = hologram.copy()
-    if center is None:
-        center = (hologram.shape[1]/2,hologram.shape[0]/2)
+    if x0 is None:
+        x0 = hologram.shape[0]/2
+    if y0 is None:
+        y0 = hologram.shape[1]/2
+    center = (x0,y0)
     if radius is None:
         radius = min(hologram.shape[1]-center[0],center[0],
                      hologram.shape[0]-center[1],center[1])

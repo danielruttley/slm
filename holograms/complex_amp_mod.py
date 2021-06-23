@@ -64,7 +64,6 @@ class ComplexAmpMod():
             holo:   a complex amplitude modulation hologram between 0-1 to be 
                     applied to the SLM screen
         """
-        
 
         r = np.sqrt((self.xx-center[0])**2+(self.yy-center[1])**2)
         phi = np.arctan2(self.yy-center[1],self.xx-center[0])%(2*np.pi)
@@ -84,23 +83,54 @@ class ComplexAmpMod():
         else:
             A = np.abs(field)
         phase = (np.angle(field))%(2*np.pi)
-        print(np.max(phase))
-        print(np.min(phase))
+        # print(np.max(phase))
+        # print(np.min(phase))
 
-        if focal_plane != None:
+        if focal_plane != None: #currently won't work because focal_plane_shift has been changed
             lens = focal_plane_shift(focal_plane,center,self.wavelength)*2*np.pi
             phase = (phase+lens)%(2*np.pi)
 
-        print(np.max(phase))
-        print(np.min(phase))
+        # print(np.max(phase))
+        # print(np.min(phase))
 
-        print(np.max(A))
+        # print(np.max(A))
         inverse_sinc = np.vectorize(self.inverse_sinc)
         M = 1+inverse_sinc(A)/np.pi
 
-        print(np.max(M))
-        print(np.min(M))
+        # print(np.max(M))
+        # print(np.min(M))
 
         F = phase-np.pi*M
         return M*((F+blazing*2*np.pi)%(2*np.pi))/2/np.pi
     
+def superposition(prev_holos,ps='0,2,4',beam_center=(256,256),waist=100,wavelength=1064e-9,beam_waist=250,shape=(512,512)):
+    """
+    Generates a complex amplitude modulation hologram for a superposition of 
+    radial TEMp0 modes.
+
+    Parameters
+    ----------
+    ps: A list of the p values in the superposition. Each entry should 
+        be an integer.
+    waist:  the TEM waist of the hologram in SLM pixels
+    
+    Returns
+    -------
+    holo:   a complex amplitude modulation hologram between 0-1 to be 
+            applied to the SLM screen
+    """
+    cam = ComplexAmpMod(xsize=shape[0],ysize=shape[1],wavelength=wavelength)
+
+    # if x0 is None:
+    #     x0 = shape[0]/2
+    # if y0 is None:
+    #     y0 = shape[1]/2
+    # center = (x0,y0)
+
+    if type(ps) == str:
+        ps.replace('[','')
+        ps.replace(']','')
+        ps = '['+ps+']'
+        ps = eval(ps)
+    
+    return cam.superposition_holo(ps,beam_center,waist,prev_holos,beam_waist,None,False)

@@ -3,8 +3,8 @@ channels:
   - defaults
 dependencies:
   - blas=1.0=mkl
-  - ca-certificates=2021.1.19=haa95532_1
-  - certifi=2020.12.5=py37haa95532_0
+  - ca-certificates=2021.5.25=haa95532_1
+  - certifi=2021.5.30=py37haa95532_0
   - cycler=0.10.0=py37_0
   - freetype=2.10.4=hd328e21_0
   - icc_rt=2019.0.0=h0cc432a_1
@@ -34,6 +34,7 @@ dependencies:
   - python-dateutil=2.8.1=pyhd3eb1b0_0
   - pytz=2021.1=pyhd3eb1b0_0
   - qt=5.9.7=vc14h73c81de_0
+  - qtpy=1.9.0=py_0
   - scipy=1.6.2=py37h14eb087_0
   - setuptools=52.0.0=py37haa95532_0
   - sip=4.19.8=py37h6538335_0
@@ -49,7 +50,4 @@ dependencies:
   - xz=5.2.5=h62dcd97_0
   - zlib=1.2.11=h62dcd97_4
   - zstd=1.4.9=h19a0ad4_0
-  - pip:
-    - opencv-python==4.5.1.48
 prefix: C:\Users\mfqq76\Anaconda\envs\slm
-
