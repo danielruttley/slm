@@ -18,6 +18,8 @@ import struct
 import bz2
 import zlib
 import gzip
+import sys
+from .strtypes import error, warning, info
 
 ### 12/04/21 DR: Added the following block to prevent error message upon exit
 def disable_asserts():
@@ -256,13 +258,16 @@ class Client():
         
 class SLMdisplay:
     """Interface for sending images to the display frame."""
-    def __init__(self,
+    def __init__(self, parent,
                  monitor = 1, 
                  isImageLock = False,
-                 alwaysTop = False):       
+                 alwaysTop = False):   
+        self.parent = parent    
         self.isImageLock = isImageLock    
         self.alwaysTop = alwaysTop
         self.monitor = monitor
+        self.monitor_fallback = 0
+        self.monitor_exception = None
         # Create the thread in which the window app will run
         # It needs its thread to continuously refresh the window
         self.vt =  videoThread(self)      
@@ -411,13 +416,23 @@ class SLMdisplay:
     def close(self):
          self.vt.frame.Quit()
 
+    def update_monitor(self,monitor):
+        if monitor != self.monitor:
+            self.monitor = monitor
+            self.vt.frame.Quit()
+    
+    def trigger_monitor_update(self,monitor):
+        self.monitor = monitor
+        self.parent.trigger_monitor_update(monitor)
+
 class videoThread(threading.Thread):
     """Run the MainLoop as a thread. 
     WxPython is not designed for that, it will give a warning on exit, but it will work, 
     see: https://wiki.wxpython.org/MainLoopAsThread
     Access the frame with self.frame."""
-    def __init__(self, parent,autoStart=True):
+    def __init__(self,parent,autoStart=True):
         threading.Thread.__init__(self)
+        self.alive = True
         self.parent = parent
         # Set as deamon so that it does not prevent the main program from exiting
         self.setDaemon(1)
@@ -428,16 +443,30 @@ class videoThread(threading.Thread):
         self.lock.acquire() #lock until variables are set
         if autoStart:
             self.start() #automatically start thread on init
+
     def run(self):
         app = wx.App()
-        frame = SLMframe(monitor = self.parent.monitor, 
-                         isImageLock = self.parent.isImageLock,
-                         alwaysTop = self.parent.alwaysTop)
-        frame.Show(True)
-        self.frame = frame
-        self.lock.release()
-        # Start GUI main loop
-        app.MainLoop()
+        while(True):
+            try:
+                frame = SLMframe(monitor = self.parent.monitor, 
+                                isImageLock = self.parent.isImageLock,
+                                alwaysTop = self.parent.alwaysTop)
+            except ValueError as e:
+                error('{} is not a valid monitor. Falling back to monitor {}.'.format(self.parent.monitor,self.parent.monitor_fallback))
+                self.parent.trigger_monitor_update(self.parent.monitor_fallback)
+                frame = SLMframe(monitor = self.parent.monitor, 
+                                isImageLock = self.parent.isImageLock,
+                                alwaysTop = self.parent.alwaysTop)
+            frame.Show(True)
+            self.frame = frame
+            try:
+                self.lock.release()
+            except RuntimeError as e:
+                error('RuntimeError when recreating SLM frame:',e)
+            # Start GUI main loop
+            app.MainLoop()
+            # self.lock.acquire()
+            # self.frame = None
 
     def start_local(self):
         self.start_orig()

@@ -7,9 +7,10 @@ from scipy.fft import fft2,ifft2,fftshift,ifftshift
 
 
 
-def aags(traps,iterations=20,input_waist=None,circ_aper_center=None,
-         shape=(512,512)):
-    """Calculates an adaptive additive Gerchberg Saxton hologram which creates 
+def aags(traps='(256,256),(260,256),(256,260),(260,260)',iterations=20,
+         beam_waist=None,beam_center=(256,256),shape=(512,512)):#,circ_aper_center=None,):
+    """
+    Calculates an adaptive additive Gerchberg Saxton hologram which creates 
     an array of Gaussian traps.
 
     Parameters
@@ -31,13 +32,22 @@ def aags(traps,iterations=20,input_waist=None,circ_aper_center=None,
     array
         The generated AAGS hologram.
     """
+    if type(traps) == str:
+        traps.replace('[','')
+        traps.replace(']','')
+        traps = '['+traps+']'
+        traps = eval(traps)
+
+    input_waist = beam_waist
+    circ_aper_center = beam_center
+
     if input_waist is None:
         input_intensity = np.ones(shape)
     else:
         input_intensity = generate_input_intensity(waist=input_waist)
     print(input_intensity)
     if circ_aper_center is not None:
-        input_intensity = circ(input_intensity,circ_aper_center)
+        input_intensity = circ(input_intensity,circ_aper_center[0],circ_aper_center[1])
     phi = (np.random.rand(*shape))*2*np.pi
 
     N = len(traps)

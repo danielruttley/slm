@@ -5,10 +5,11 @@ Defines the SLM wrapper class that handles updates to the SLM.
 import numpy as np
 
 from .slmpy import SLMdisplay
+from .strtypes import error, warning, info
 
 class SLM():
 
-    def __init__(self,monitor=1,lut=r"./ScaledLutModel.txt",image_lock=True):
+    def __init__(self,monitor=1,lut=r"./ScaledLutModel.txt",image_lock=True,gui=None):
         """
         Parameters
         ----------
@@ -20,8 +21,10 @@ class SLM():
         image_lock : bool
             should the program lock until the SLM image is updated
         """
-        self.slm = SLMdisplay(monitor=monitor,isImageLock=image_lock)
+        self.gui = gui
+        self.slm = SLMdisplay(self,monitor=monitor,isImageLock=image_lock)
         self.x_size, self.y_size = self.slm.getSize()
+        self.hologram = np.zeros((1,1))
         if lut == None:
             self.lut = None
         else:
@@ -31,8 +34,9 @@ class SLM():
                     (key, val) = line.split()
                     self.lut[int(key)] = int(val)
 
-    # def __del__(self):
-    #     self.slm.close()
+    def close(self):
+         self.slm.close()
+         self.slm = None
     
     def apply_hologram(self,hologram):
         """Applies a hologram to the SLM display after applying the lookup 
@@ -44,13 +48,13 @@ class SLM():
             a 2D array of values from 0-1 to be applied in the top-left
             of the SLM screen, representing phase modulation from 0-2pi
         """
+        self.hologram = hologram
         hologram = np.uint16(hologram*65535)
         if self.lut != None:
             hologram = self.apply_lut(hologram)
         image = self.get_slm_image(hologram)
         image = self.pad_image(image)
         self.slm.updateArray(image)
-        
 
     def apply_lut(self,hologram):
         """Uses the lookup table to convert the hologram from the 16bit phase 
@@ -85,3 +89,11 @@ class SLM():
         """
         x,y,z = image.shape
         return np.pad(image,((0,self.y_size-y),(0,self.x_size-x),(0,0)))
+
+    def trigger_monitor_update(self,monitor):
+        if self.gui is not None:
+            self.gui.update_slm_settings({'monitor':monitor})
+
+    def update_monitor(self,monitor):
+        self.slm.update_monitor(monitor)
+        self.apply_hologram(self.hologram)

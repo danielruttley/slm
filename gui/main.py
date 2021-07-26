@@ -1,5 +1,6 @@
 import sys
 import os
+import threading
 os.system("color")
 import inspect
 
@@ -19,7 +20,8 @@ if __name__ == '__main__':
 import holograms as hg
 from slm import SLM
 
-hologram_functions = {'grating':hg.gratings.grating,'lens':hg.lenses.lens,'lens (focal shift)':hg.lenses.focal_plane_shift,'zernike polynomial':hg.zernike}
+hologram_functions = {'grating':hg.gratings.grating,'vertical grating':hg.gratings.vert,'vertical grating (gradient)':hg.gratings.vert_gradient,'horizontal grating':hg.gratings.hori,'horizontal grating (gradient)':hg.gratings.hori_gradient,'lens':hg.lenses.lens,'lens (focal shift)':hg.lenses.focal_plane_shift,
+                      'zernike polynomial':hg.zernike,'array':hg.arrays.aags}
 aperture_functions = {'circular aperture':hg.apertures.circ,'vertical aperture':hg.apertures.vert,'horizontal aperture':hg.apertures.hori}
 cam_functions = {'LG superposition':hg.complex_amp_mod.superposition}
 
@@ -43,7 +45,7 @@ def get_holo_type_function(name):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.tcp_client = PyClient(port=8627,name='SLM')
+        self.tcp_client = PyClient(host='129.234.190.164',port=8627,name='SLM')
         self.tcp_client.start()
 
         self.setWindowTitle("SLM control")
@@ -62,12 +64,12 @@ class MainWindow(QMainWindow):
                              'x size':512,
                              'y size':512,
                              'pixel size (m)':15e-6,
-                             'monitor':0,
-                             'beam x0':251,
-                             'beam y0':265,
+                             'monitor':1,
+                             'beam x0':265,
+                             'beam y0':251,
                              'beam waist (pixels)':215,
                              'wavelength':1064e-9}        
-        self.slm = SLM(monitor=self.slm_settings['monitor'])
+        self.slm = SLM(monitor=self.slm_settings['monitor'],gui=self)
 
         self.update_global_holo_params()
         self.update_holo_list()
@@ -82,6 +84,10 @@ class MainWindow(QMainWindow):
         self.removeHoloAction = QAction(self)
         self.removeHoloAction.setText("Remove")
         self.removeHoloAction.setIcon(QIcon(":subtract.svg"))
+
+        self.editHoloAction = QAction(self)
+        self.editHoloAction.setText("Edit")
+        self.editHoloAction.setIcon(QIcon(":edit.svg"))
 
         self.upHoloAction = QAction(self)
         self.upHoloAction.setText("Up")
@@ -111,6 +117,7 @@ class MainWindow(QMainWindow):
         holoToolBar = self.addToolBar("Hologram creation")
         holoToolBar.addAction(self.addHoloAction)
         holoToolBar.addAction(self.removeHoloAction)
+        holoToolBar.addAction(self.editHoloAction)
 
         orderToolBar = self.addToolBar("Hologram ordering")
         orderToolBar.addAction(self.upHoloAction)
@@ -119,6 +126,7 @@ class MainWindow(QMainWindow):
     def _connectActions(self):
         self.addHoloAction.triggered.connect(self.open_new_holo_window)
         self.removeHoloAction.triggered.connect(self.remove_holo)
+        self.editHoloAction.triggered.connect(self.edit_holo)
         self.upHoloAction.triggered.connect(self.up_holo)
         self.downHoloAction.triggered.connect(self.down_holo)
         self.loadHoloFileAction.triggered.connect(self.load_holo_file_dialogue)
@@ -159,6 +167,8 @@ class MainWindow(QMainWindow):
             new_value = new_slm_settings[setting]
             if new_value != old_value:
                 warning('Changed global SLM setting {} from {} to {}'.format(setting,old_value,new_value))
+                if setting == 'monitor':
+                    self.slm.update_monitor(new_value)
             if setting == 'orientation':
                 if new_value == 'horizontal':
                     aperture_functions['horizontal aperture'] = hg.apertures.vert
@@ -193,6 +203,11 @@ class MainWindow(QMainWindow):
             self.update_holo_list()
         except ValueError as e:
             error('Error when generating {} hologram:'.format(holo_params['name']),e)
+
+    def edit_holo(self):
+        currentRow = self.holoList.currentRow()
+        self.w = HoloCreationWindow(self,currentRow)
+        self.w.show()
 
     def remove_holo(self):
         currentRow = self.holoList.currentRow()
@@ -254,13 +269,18 @@ class MainWindow(QMainWindow):
             holo = get_holo_container(holo_params,self.global_holo_params)
             self.holos.append(holo)
         self.update_holo_list()
+        self.w = None
 
-    def save_holo_file(self,filename):
+    def generate_holo_list(self):
         holo_list = []
         for holo in self.holos:
             name = holo.get_name()
             args = holo.get_local_args()
             holo_list.append([name,args])
+        return holo_list
+
+    def save_holo_file(self,filename):
+        holo_list = self.generate_holo_list()
         msg = [self.slm_settings,holo_list]
         with open(filename, 'w') as f:
             f.write(str(msg))
@@ -280,6 +300,8 @@ class MainWindow(QMainWindow):
             pass
         elif command == 'save_all':
             self.save_holo_file(arg)
+        elif command == 'load_all':
+            self.load_holo_file(arg)
         elif command == 'set_data':
             for update in eval(arg):
                 try:
@@ -331,7 +353,7 @@ class SLMSettingsWindow(QWidget):
                 widget = QComboBox()
                 widget.addItems(['horizontal','vertical'])
                 widget.setCurrentText(self.slm_settings[key])
-            elif key == 'pixel size (m)':
+            elif key == (key == 'pixel size (m)') or (key == 'wavelength'):
                 widget = QLineEdit()
                 widget.setValidator(QDoubleValidator())
                 widget.setText(str(self.slm_settings[key]))
@@ -364,7 +386,7 @@ class SLMSettingsWindow(QWidget):
             widget = self.slmParamsLayout.itemAt(row,1).widget()
             if key == 'orientation':
                 value = widget.currentText()
-            elif key == 'pixel size (m)':
+            elif (key == 'pixel size (m)') or (key == 'wavelength'):
                 value = float(widget.text())
             else:
                 value = int(widget.text())
@@ -375,10 +397,19 @@ class SLMSettingsWindow(QWidget):
         return self.slm_settings
 
 class HoloCreationWindow(QWidget):
-    def __init__(self,mainWindow):
+    def __init__(self,mainWindow,edit_holo=None):
         super().__init__()
         self.mainWindow = mainWindow
-        self.setWindowTitle("New hologram")
+        if edit_holo is None:
+            self.setWindowTitle("New Hologram")
+            self.editing = False
+        else:
+            self.setWindowTitle("Edit Hologram {}".format(edit_holo))
+            self.editing = True
+            self.edit_holo = edit_holo
+            self.current_holo_list = self.mainWindow.generate_holo_list()
+            self.current_name = self.current_holo_list[edit_holo][0]
+            self.current_params = self.current_holo_list[edit_holo][1]
         layout = QVBoxLayout()
         
         self.holoSelector = QComboBox()
@@ -387,10 +418,16 @@ class HoloCreationWindow(QWidget):
         self.holoSelector.addItems(list(cam_functions.keys()))
         layout.addWidget(self.holoSelector)
 
+        if self.editing == True:
+            self.holoSelector.setCurrentText(self.current_name)
+
         self.holoParamsLayout = QFormLayout()
         layout.addLayout(self.holoParamsLayout)
 
-        self.holoAddButton = QPushButton("Add")
+        if self.editing == False:
+            self.holoAddButton = QPushButton("Add")
+        else:
+            self.holoAddButton = QPushButton("Edit")
         layout.addWidget(self.holoAddButton)
 
         self.holoDocBox = QTextEdit()
@@ -423,17 +460,20 @@ class HoloCreationWindow(QWidget):
                 if argument not in global_holo_params.keys():
                     self.holoParamsLayout.addRow(argument, QLineEdit())
                     text_box = self.holoParamsLayout.itemAt(self.holoParamsLayout.rowCount()-1, 1).widget()
-                    if argument == 'x0':
-                        text_box.setText(str(slm_settings['beam x0']))
-                    elif argument == 'y0':
-                        text_box.setText(str(slm_settings['beam y0']))
-                    elif argument == 'radius':
-                        radius = min([slm_settings['x size']-slm_settings['beam x0'],
-                                      slm_settings['y size']-slm_settings['beam y0'],
-                                      slm_settings['beam x0'],slm_settings['beam y0']])
-                        text_box.setText(str(radius))
+                    if (self.editing == True) and (current == self.current_name):
+                        text_box.setText(str(self.current_params[argument]))
                     else:
-                        text_box.setText(str(default))
+                        if argument == 'x0':
+                            text_box.setText(str(slm_settings['beam x0']))
+                        elif argument == 'y0':
+                            text_box.setText(str(slm_settings['beam y0']))
+                        elif argument == 'radius':
+                            radius = min([slm_settings['x size']-slm_settings['beam x0'],
+                                        slm_settings['y size']-slm_settings['beam y0'],
+                                        slm_settings['beam x0'],slm_settings['beam y0']])
+                            text_box.setText(str(radius))
+                        else:
+                            text_box.setText(str(default))
         self.holoDocBox.setText(self.function.__doc__.split('Returns')[0])
 
     def clear_holo_params(self):
@@ -445,6 +485,8 @@ class HoloCreationWindow(QWidget):
         holo_params = {'name':self.holoSelector.currentText()}
         holo_params['function'] = self.function
         holo_params['type'] = self.type
+        if self.editing == True:
+            holo_params = {}
         for row in range(self.holoParamsLayout.rowCount()):
             key = self.holoParamsLayout.itemAt(row,0).widget().text()
             widget = self.holoParamsLayout.itemAt(row,1).widget()
@@ -464,7 +506,13 @@ class HoloCreationWindow(QWidget):
                     except ValueError:
                         pass
             holo_params[key] = value
-        self.mainWindow.add_holo(holo_params)
+        if self.editing == True:
+            holo_list = self.current_holo_list.copy()
+            holo_list[self.edit_holo] = [self.holoSelector.currentText(),holo_params]
+            print(holo_list)
+            self.mainWindow.set_holos_from_list(holo_list)
+        else:
+            self.mainWindow.add_holo(holo_params)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

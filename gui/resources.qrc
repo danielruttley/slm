@@ -2,6 +2,7 @@
 <qresource>
     <file alias="add.svg">resources/add.svg</file>
     <file alias="subtract.svg">resources/subtract.svg</file>
+	<file alias="edit.svg">resources/edit.svg</file>
     <file alias="up.svg">resources/up.svg</file>
     <file alias="down.svg">resources/down.svg</file>
 </qresource>
