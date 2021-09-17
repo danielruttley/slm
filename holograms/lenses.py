@@ -4,6 +4,13 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 import os
+
+from .misc import blank
+
+import sys
+sys.path.append("..")
+from gui.strtypes import error,warning
+
 package_directory = os.path.dirname(os.path.abspath(__file__))
 
 def lens(f=20,x0=None,y0=None,wavelength=1064e-9,pixel_size=15e-6,shape=(512,512)):
@@ -74,18 +81,15 @@ def focal_plane_shift(shift=-3.9,x0=None,y0=None,wavelength=1064e-9,pixel_size=1
     fs = df['f [m]']
     shifts = df['focus shift [um]']
     
-    if shift == 0:
-        raise ValueError('shift of 0 requires no lens')
-    elif shift > 0:
-        if shift > np.max(shifts[shifts > 0]):
-            raise ValueError('shift is above max. value of {:.2f}'.format(np.max(shifts[shifts > 0])))
-        elif shift < np.min(shifts[shifts > 0]):
-            raise ValueError('shift is below min. positive value of {:.2f}'.format(np.min(shifts[shifts > 0])))
-    else:
-        if shift < np.min(shifts[shifts < 0]):
-            raise ValueError('shift is below min. value of {:.2f}'.format(np.min(shifts[shifts < 0])))
-        elif shift > np.max(shifts[shifts < 0]):
-            raise ValueError('shift is above max. negative value of {:.2f}'.format(np.max(shifts[shifts < 0])))        
+    if (shift > np.max(shifts[shifts < 0])) and (shift < np.min(shifts[shifts > 0])):
+        warning('Requested shift of {} is too close to 0. 0 shift has been applied.'.format(shift))
+        return blank(shape=shape)
+    elif shift > np.max(shifts[shifts > 0]):
+        error('The requested shift of {} is too large. The maximum shift of {:.2f} has been applied.'.format(shift,np.max(shifts[shifts > 0])))
+        shift = np.max(shifts[shifts > 0])
+    elif shift < np.min(shifts[shifts < 0]):
+        error('The requested shift of {} is too large. The maximum shift of {:.2f} has been applied.'.format(shift,np.min(shifts[shifts < 0])))
+        shift = np.min(shifts[shifts < 0])
     f1 = interp1d(shifts,fs, kind='linear')
     f = f1(shift)
     print('shift of {:.2f}um => lens with f = {:.2f}m'.format(shift,f))
