@@ -47,6 +47,8 @@ class HoloContainer(Container):
         self.name = holo_params['name']
         self.function = holo_params['function']
         self.type='holo'
+        self.global_holo_params = global_holo_params
+        self.force_recalculate = False
         self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
         self.local_args = self.args.copy()
         for key in global_holo_params:
@@ -55,6 +57,8 @@ class HoloContainer(Container):
         self.calculate_holo()
     
     def calculate_holo(self):
+        self.args = {**self.args,**self.global_holo_params}
+        self.args = {k: self.args[k] for k in inspect.getfullargspec(self.function)[0] if k in self.args}
         self.holo = self.function(**self.args)
 
     def update_arg(self,arg_name,arg_value):
@@ -65,6 +69,9 @@ class HoloContainer(Container):
             raise NameError('{} is not a parameter for {} hologram'.format(arg_name,self.name))
 
     def get_holo(self):
+        if self.force_recalculate:
+            self.calculate_holo()
+            self.force_recalculate = False
         return self.holo
 
 class ApertureContainer(Container):
@@ -72,13 +79,18 @@ class ApertureContainer(Container):
         self.name = holo_params['name']
         self.function = holo_params['function']
         self.type='aperture'
+        self.global_holo_params = global_holo_params
+        self.force_recalculate = False
         self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
         self.local_args = self.args.copy()
         for key in global_holo_params:
             self.local_args.pop(key, None)
     
     def apply_aperture(self,holo):
+        self.args = {**self.args,**self.global_holo_params}
+        self.args = {k: self.args[k] for k in inspect.getfullargspec(self.function)[0] if k in self.args}
         holo = self.function(holo,**self.args)
+        self.force_recalculate = False
         return holo
 
     def update_arg(self,arg_name,arg_value):
@@ -92,6 +104,8 @@ class CAMContainer(Container):
         self.name = holo_params['name']
         self.function = holo_params['function']
         self.type='cam'
+        self.global_holo_params = global_holo_params
+        self.force_recalculate = False
         self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
         self.local_args = self.args.copy()
         self.prev_holos = None
@@ -101,8 +115,11 @@ class CAMContainer(Container):
     
     def get_cam_holo(self,prev_holos):
         if not array_equal(self.prev_holos,prev_holos):
+            self.args = {**self.args,**self.global_holo_params}
+            self.args = {k: self.args[k] for k in inspect.getfullargspec(self.function)[0] if k in self.args}
             self.holo = self.function(prev_holos,**self.args)
             self.prev_holos = prev_holos.copy()
+            self.force_recalculate = False
         return self.holo
 
     def update_arg(self,arg_name,arg_value):
