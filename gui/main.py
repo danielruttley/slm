@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         else:
             self.tcp_client = PyClient(host='129.234.190.164',port=8627,name='SLM')
         self.tcp_client.start()
+        self.last_SLMparam_folder = '.'
 
         self.setWindowTitle("SLM control")
         layout = QVBoxLayout()
@@ -110,10 +111,10 @@ class MainWindow(QMainWindow):
         self.downHoloAction.setIcon(QIcon(":down.svg"))
 
         self.loadHoloFileAction = QAction(self)
-        self.loadHoloFileAction.setText("Load state")
+        self.loadHoloFileAction.setText("Load SLMparam")
 
         self.saveHoloFileAction = QAction(self)
-        self.saveHoloFileAction.setText("Save state")
+        self.saveHoloFileAction.setText("Save SLMparam")
 
         self.slmSettingsAction = QAction(self)
         self.slmSettingsAction.setText("SLM settings")
@@ -123,6 +124,7 @@ class MainWindow(QMainWindow):
         mainMenu = menuBar.addMenu("Menu")
         mainMenu.addAction(self.loadHoloFileAction)
         mainMenu.addAction(self.saveHoloFileAction)
+        mainMenu.addSeparator()
         mainMenu.addAction(self.slmSettingsAction)
     
     def _createToolBars(self):
@@ -141,12 +143,6 @@ class MainWindow(QMainWindow):
         self.holoList.addAction(self.editHoloAction)
         self.holoList.addAction(self.upHoloAction)
         self.holoList.addAction(self.downHoloAction)
-        # contextMenu = QMenu(self)
-        # contextMenu.addAction(self.addHoloAction)
-        # contextMenu.addAction(self.removeHoloAction)
-        # contextMenu.addAction(self.editHoloAction)
-        # contextMenu.addAction(self.upHoloAction)
-        # contextMenu.addAction(self.downHoloAction)
 
     def _connectActions(self):
         self.addHoloAction.triggered.connect(self.open_new_holo_window)
@@ -354,9 +350,11 @@ class MainWindow(QMainWindow):
         info('SLM settings and holograms saved to "{}"'.format(filename))
     
     def save_holo_file_dialogue(self):
-        filename = QFileDialog.getSaveFileName(self, 'Save file','.',"Text documents (*.txt)")[0]
+        filename = QFileDialog.getSaveFileName(self, 'Save SLMparam',self.last_SLMparam_folder,"Text documents (*.txt)")[0]
         if filename != '':
             self.save_holo_file(filename)
+            self.last_SLMparam_folder = os.path.dirname(filename)
+            print(self.last_SLMparam_folder)
 
     def recieved_tcp_msg(self,msg):
         info('TCP message recieved: "'+msg+'"')
@@ -384,9 +382,10 @@ class MainWindow(QMainWindow):
         self.update_holo_list()
     
     def load_holo_file_dialogue(self):
-        filename = QFileDialog.getOpenFileName(self, 'Open file','.',"Text documents (*.txt)")[0]
+        filename = QFileDialog.getOpenFileName(self, 'Load SLMparam',self.last_SLMparam_folder,"Text documents (*.txt)")[0]
         if filename != '':
             self.load_holo_file(filename)
+            self.last_SLMparam_folder = os.path.dirname(filename)
 
     def load_holo_file(self,filename):
         try:
