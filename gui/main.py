@@ -202,20 +202,30 @@ class MainWindow(QMainWindow):
                 else:
                     aperture_functions['horizontal aperture'] = hg.apertures.hori
                     aperture_functions['vertical aperture'] = hg.apertures.vert
-        self.slm_settings = new_slm_settings
+        for setting in new_slm_settings.keys():
+            self.slm_settings[setting] = new_slm_settings[setting]
         self.update_global_holo_params()
+        try:
+            self.slm
+        except AttributeError:
+            pass
+        else:
+            self.update_holo_list()
         self.slm_settings_window = None
 
     def update_global_holo_params(self):
-        shape = (self.slm_settings['x size'],self.slm_settings['y size'])
-        beam_center = (self.slm_settings['beam x0'],self.slm_settings['beam y0'])
-        pixel_size = self.slm_settings['pixel size (m)']
-        self.global_holo_params = {'shape':shape,
-                                   'beam_center':beam_center,
-                                   'beam_waist':self.slm_settings['beam waist (pixels)'],
-                                   'pixel_size':pixel_size,
-                                   'wavelength':self.slm_settings['wavelength']}
-    
+        try:
+            self.global_holo_params
+        except AttributeError:
+            self.global_holo_params = {}
+        self.global_holo_params['beam_center'] = (self.slm_settings['beam x0'],self.slm_settings['beam y0'])
+        self.global_holo_params['beam_waist'] = self.slm_settings['beam waist (pixels)']
+        self.global_holo_params['pixel_size'] = self.slm_settings['pixel size (m)']
+        self.global_holo_params['shape'] = (self.slm_settings['x size'],self.slm_settings['y size'])
+        self.global_holo_params['wavelength'] = self.slm_settings['wavelength']
+        for holo in self.holos:
+            holo.force_recalculate = True
+
     def get_global_holo_params(self):
         return self.global_holo_params
 
@@ -237,7 +247,10 @@ class MainWindow(QMainWindow):
 
     def remove_holo(self):
         currentRow = self.holoList.currentRow()
-        del self.holos[currentRow]
+        try:
+            del self.holos[currentRow]
+        except IndexError:
+            pass
         self.update_holo_list()
     
     def update_holo_list(self):
@@ -374,7 +387,7 @@ class SLMSettingsWindow(QWidget):
     def __init__(self,mainWindow,slm_settings):
         super().__init__()
         self.mainWindow = mainWindow
-        self.slm_settings = slm_settings.copy()
+        self.slm_settings = slm_settings
         self.setWindowTitle("SLM settings")
 
         layout = QVBoxLayout()
@@ -388,9 +401,9 @@ class SLMSettingsWindow(QWidget):
             else:
                 widget = QLineEdit()
                 widget.setText(str(self.slm_settings[key]))
-                if key == (key == 'pixel size (m)') or (key == 'wavelength'):
+                if (key == 'pixel size (m)') or (key == 'wavelength'):
                     widget.setValidator(QDoubleValidator())
-                if key == 'monitor':
+                elif key == 'monitor':
                     widget.setReadOnly(True)
                 else:
                     widget.setValidator(QIntValidator())
@@ -414,6 +427,7 @@ class SLMSettingsWindow(QWidget):
         self.saveAction.triggered.connect(self.update_slm_settings)
     
     def update_slm_settings(self):
+        new_slm_settings = self.slm_settings.copy()
         for row in range(self.slmParamsLayout.rowCount()):
             key = self.slmParamsLayout.itemAt(row,0).widget().text()
             widget = self.slmParamsLayout.itemAt(row,1).widget()
@@ -423,8 +437,8 @@ class SLMSettingsWindow(QWidget):
                 value = float(widget.text())
             else:
                 value = int(widget.text())
-            self.slm_settings[key] = value
-        self.mainWindow.update_slm_settings(self.slm_settings)
+            new_slm_settings[key] = value
+        self.mainWindow.update_slm_settings(new_slm_settings)
 
     def get_slm_settings(self):
         return self.slm_settings
