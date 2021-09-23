@@ -5,10 +5,11 @@ os.system("color")
 import inspect
 
 #from qtpy.QtCore import QThread,Signal,Qt
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (QApplication,QMainWindow,QVBoxLayout,QWidget,
                             QAction,QListWidget,QFormLayout,QComboBox,QLineEdit,
-                            QTextEdit,QPushButton,QFileDialog,QMenu)
-from qtpy.QtGui import QIcon,QIntValidator,QDoubleValidator,QColor,QFont
+                            QTextEdit,QPushButton,QFileDialog,QAbstractItemView)
+from qtpy.QtGui import QIcon,QIntValidator,QDoubleValidator,QColor
 
 from . import qrc_resources
 from .holo_container import get_holo_container
@@ -56,11 +57,13 @@ class MainWindow(QMainWindow):
 
         self.holoList = QListWidget()
         self.setCentralWidget(self.holoList)
+        self.holoList.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.holoList.setContextMenuPolicy(Qt.ActionsContextMenu)
 
         self._createActions()
         self._createMenuBar()
         self._createToolBars()
-        # self._createContextMenu()
+        self._createContextMenu()
         self._connectActions()
 
         self.holos = []
@@ -133,12 +136,17 @@ class MainWindow(QMainWindow):
         orderToolBar.addAction(self.downHoloAction)
     
     def _createContextMenu(self):
-        contextMenu = QMenu(self)
-        contextMenu.addAction(self.addHoloAction)
-        contextMenu.addAction(self.removeHoloAction)
-        contextMenu.addAction(self.editHoloAction)
-        contextMenu.addAction(self.upHoloAction)
-        contextMenu.addAction(self.downHoloAction)
+        self.holoList.addAction(self.addHoloAction)
+        self.holoList.addAction(self.removeHoloAction)
+        self.holoList.addAction(self.editHoloAction)
+        self.holoList.addAction(self.upHoloAction)
+        self.holoList.addAction(self.downHoloAction)
+        # contextMenu = QMenu(self)
+        # contextMenu.addAction(self.addHoloAction)
+        # contextMenu.addAction(self.removeHoloAction)
+        # contextMenu.addAction(self.editHoloAction)
+        # contextMenu.addAction(self.upHoloAction)
+        # contextMenu.addAction(self.downHoloAction)
 
     def _connectActions(self):
         self.addHoloAction.triggered.connect(self.open_new_holo_window)
@@ -157,18 +165,30 @@ class MainWindow(QMainWindow):
         self.w.show()
 
     def up_holo(self):
-        currentRow = self.holoList.currentRow()
-        if currentRow != 0:
-            self.holos[currentRow],self.holos[currentRow-1] = self.holos[currentRow-1],self.holos[currentRow]
-            self.update_holo_list()
-            self.holoList.setCurrentRow(currentRow-1)
+        selectedRows = [x.row() for x in self.holoList.selectedIndexes()]
+        if len(selectedRows) == 0:
+            error('A hologram must be selected before it can be moved.')
+        elif len(selectedRows) > 1:
+            error('Only one hologram can be moved at once.')
+        else:
+            currentRow = selectedRows[0]
+            if currentRow != 0:
+                self.holos[currentRow],self.holos[currentRow-1] = self.holos[currentRow-1],self.holos[currentRow]
+                self.update_holo_list()
+                self.holoList.setCurrentRow(currentRow-1)
 
     def down_holo(self):
-        currentRow = self.holoList.currentRow()
-        if currentRow != self.holoList.count()-1:
-            self.holos[currentRow],self.holos[currentRow+1] = self.holos[currentRow+1],self.holos[currentRow]
-            self.update_holo_list()
-            self.holoList.setCurrentRow(currentRow+1)
+        selectedRows = [x.row() for x in self.holoList.selectedIndexes()]
+        if len(selectedRows) == 0:
+            error('A hologram must be selected before it can be moved.')
+        elif len(selectedRows) > 1:
+            error('Only one hologram can be moved at once.')
+        else:
+            currentRow = selectedRows[0]
+            if currentRow != self.holoList.count()-1:
+                self.holos[currentRow],self.holos[currentRow+1] = self.holos[currentRow+1],self.holos[currentRow]
+                self.update_holo_list()
+                self.holoList.setCurrentRow(currentRow+1)
 
     def open_slm_settings_window(self):
         self.slm_settings_window = SLMSettingsWindow(self,self.slm_settings)
@@ -241,17 +261,25 @@ class MainWindow(QMainWindow):
             error('Error when generating {} hologram:'.format(holo_params['name']),e)
 
     def edit_holo(self):
-        currentRow = self.holoList.currentRow()
-        self.w = HoloCreationWindow(self,currentRow)
-        self.w.show()
+        selectedRows = [x.row() for x in self.holoList.selectedIndexes()]
+        if len(selectedRows) == 0:
+            error('A hologram must be selected before it can be edited.')
+        elif len(selectedRows) > 1:
+            error('Only one hologram can be edited at once.')
+        else:
+            self.w = HoloCreationWindow(self,selectedRows[0])
+            self.w.show()
 
     def remove_holo(self):
-        currentRow = self.holoList.currentRow()
-        try:
-            del self.holos[currentRow]
-        except IndexError:
-            pass
-        self.update_holo_list()
+        selectedRows = [x.row() for x in self.holoList.selectedIndexes()]
+        if len(selectedRows) != 0:
+            selectedRows.sort(reverse=True)
+            for row in selectedRows:
+                try:
+                    del self.holos[row]
+                except IndexError:
+                    pass
+            self.update_holo_list()
     
     def update_holo_list(self):
         currentRow = self.holoList.currentRow()
