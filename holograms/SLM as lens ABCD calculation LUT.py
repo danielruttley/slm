@@ -70,8 +70,8 @@ def ABCDsolution(M, w0, R0, wavelength):
     return w1, R1
 
 
-fmax = 200.  # max range of SLM focal length to plot
-fs = np.linspace(-fmax,fmax,2000)
+fmax = 1000.  # max range of SLM focal length to plot
+fs = np.linspace(-fmax,fmax,10000)
 foci = np.zeros(len(fs))
 waists = np.zeros(len(fs))
 
@@ -85,6 +85,8 @@ def focusPlotter():
         and return the waist / focus position as a function of one of those parameters.
     """
     for i in range(len(fs)):
+        if i%100 == 0:
+            print(i)
         #    Optics path for 1064nm setup using SLM as a lens:
         #    beam -> 35mm lens -> 285mm -> 250mm lens -> SLM (as lens)-> 125mm lens -> 525mm -> 400mm lens -> 0.5m to objective -> 35mm to atoms .
         M_tweezer = dotter(Mf(0.035), Mx(0.285), Mf(0.250), Mx(0.25), Mf(fs[i]), Mx(0.25), Mf(0.100), Mx(0.500), Mf(0.400), Mx(0.500), Mf(f_obj),  Mx(x_obj))
@@ -97,17 +99,17 @@ def focusPlotter():
     return foci-f_obj
 
 
-plt.figure()#(figsize=(4,4))
-plt.subplots_adjust(bottom=0.15)
+#plt.figure()#(figsize=(4,4))
+#plt.subplots_adjust(bottom=0.15)
 
 
-plt.plot(fs, (focusPlotter())*1e6, label = 'f$_\mathrm{cyl}$ = ' + str(0.2) + 'm')
-plt.xlabel('$f_\mathrm{SLM}$ (m)')
-plt.ylabel('1064nm Tweezer Focus Shift ($\mu$m)')
-#plt.xlim(min(fs), max(fs))
-#plt.ylim(-10,10)
-plt.title('1064nm tweezer axial position with SLM focal length')
-plt.show()
+#plt.plot(fs, (focusPlotter())*1e6, label = 'f$_\mathrm{cyl}$ = ' + str(0.2) + 'm')
+#plt.xlabel('$f_\mathrm{SLM}$ (m)')
+#plt.ylabel('1064nm Tweezer Focus Shift ($\mu$m)')
+##plt.xlim(min(fs), max(fs))
+##plt.ylim(-10,10)
+#plt.title('1064nm tweezer axial position with SLM focal length')
+#plt.show()
 
 df = pd.DataFrame()
 df['f [m]'] = fs
@@ -132,8 +134,3 @@ os.chdir(root)
 # 
 # 
 # 
-
-
-
-
-
