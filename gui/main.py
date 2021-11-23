@@ -304,6 +304,7 @@ class MainWindow(QMainWindow):
 
     def calculate_total_holo(self):
         self.total_holo = hg.blank(phase=0,shape=self.global_holo_params['shape'])
+        self.total_holo = self.total_holo + hg.misc.load('zernike_phase_correction.png')
         for holo in self.holos:
             if holo.get_type() == 'aperture':
                 self.total_holo = holo.apply_aperture(self.total_holo)
