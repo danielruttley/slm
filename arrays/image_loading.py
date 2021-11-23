@@ -7,7 +7,7 @@ def scale_image(array,scale):
     scaled_array = np.zeros(tuple(int(round(i*scale)) for i in array.shape),dtype=bool)
     traps = [(int(round(y*scale)),int(round(x*scale))) for (y,x) in traps]
     for trap in traps:
-        print(trap)
+        # print(trap)
         scaled_array[trap] = 1
     return scaled_array
 
@@ -29,22 +29,27 @@ def pad_image(array,shape):
 def prepare_image(array,scale=1,shape=(512,512)):
     array = scale_image(array,scale)
     array = crop_image(array)
-    array = pad_image(array,shape)
+    # array = pad_image(array,shape)
     return array
 
 def load_traps_from_image(filename,scale=1,shape=(512,512)):
     img = Image.open(filename)
     img = img.convert('1')
     array = np.asarray(img,dtype=bool)
+    array = np.flipud(array)
     array = prepare_image(array,scale,shape)
     [ys,xs] = np.where(array)
-    traps = [(y,x) for y,x in zip(ys,xs)]
+    ymin = 256
+    xmin = 220
+    traps = [(x+xmin,y+ymin) for y,x in zip(ys,xs)]
     return traps
 
 if __name__ == '__main__':
-    scale = 1
+    scale = 3
     shape = (512,512)
-    traps = load_traps_from_image('alien.png',scale,shape)
+    traps = load_traps_from_image('qsumPixel2.png',scale,shape)
+    print(traps)
+    print(len(traps))
     array = np.zeros(shape)
     for trap in traps:
         array[trap] = 1
