@@ -8,8 +8,7 @@ import os
 from .misc import blank
 
 import sys
-sys.path.append("..")
-from gui.strtypes import error,warning
+from .strtypes import error,warning
 
 package_directory = os.path.dirname(os.path.abspath(__file__))
 
