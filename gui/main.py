@@ -22,7 +22,7 @@ import holograms as hg
 from slm import SLM
 
 hologram_functions = {'grating':hg.gratings.grating,'vertical grating':hg.gratings.vert,'vertical grating (gradient)':hg.gratings.vert_gradient,'horizontal grating':hg.gratings.hori,'horizontal grating (gradient)':hg.gratings.hori_gradient,'lens':hg.lenses.lens,'lens (focal shift)':hg.lenses.focal_plane_shift,
-                      'zernike polynomial':hg.zernike,'array':hg.arrays.aags}
+                      'zernike polynomial':hg.zernike,'array':hg.arrays.aags,'image':hg.misc.load}
 aperture_functions = {'circular aperture':hg.apertures.circ,'vertical aperture':hg.apertures.vert,'horizontal aperture':hg.apertures.hori}
 cam_functions = {'LG superposition':hg.complex_amp_mod.superposition}
 
@@ -116,6 +116,9 @@ class MainWindow(QMainWindow):
         self.saveHoloFileAction = QAction(self)
         self.saveHoloFileAction.setText("Save SLMparam")
 
+        self.saveCurrentHoloAction = QAction(self)
+        self.saveCurrentHoloAction.setText("Save hologram")
+
         self.slmSettingsAction = QAction(self)
         self.slmSettingsAction.setText("SLM settings")
 
@@ -124,6 +127,8 @@ class MainWindow(QMainWindow):
         mainMenu = menuBar.addMenu("Menu")
         mainMenu.addAction(self.loadHoloFileAction)
         mainMenu.addAction(self.saveHoloFileAction)
+        mainMenu.addSeparator()
+        mainMenu.addAction(self.saveCurrentHoloAction)
         mainMenu.addSeparator()
         mainMenu.addAction(self.slmSettingsAction)
     
@@ -152,6 +157,7 @@ class MainWindow(QMainWindow):
         self.downHoloAction.triggered.connect(self.down_holo)
         self.loadHoloFileAction.triggered.connect(self.load_holo_file_dialogue)
         self.saveHoloFileAction.triggered.connect(self.save_holo_file_dialogue)
+        self.saveCurrentHoloAction.triggered.connect(self.save_current_holo_dialogue)
         self.slmSettingsAction.triggered.connect(self.open_slm_settings_window)
         self.holoList.itemDoubleClicked.connect(self.edit_holo)
         self.tcp_client.textin.connect(self.recieved_tcp_msg)
@@ -253,7 +259,7 @@ class MainWindow(QMainWindow):
             self.holoList.addItem(holo.get_label())
             self.w = None
             self.update_holo_list()
-        except ValueError as e:
+        except Exception as e:
             error('Error when generating {} hologram:'.format(holo_params['name']),e)
 
     def edit_holo(self):
@@ -304,7 +310,7 @@ class MainWindow(QMainWindow):
 
     def calculate_total_holo(self):
         self.total_holo = hg.blank(phase=0,shape=self.global_holo_params['shape'])
-        self.total_holo = self.total_holo + hg.misc.load('zernike_phase_correction.png')
+        #self.total_holo = self.total_holo + hg.misc.load('zernike_phase_correction.png')
         for holo in self.holos:
             if holo.get_type() == 'aperture':
                 self.total_holo = holo.apply_aperture(self.total_holo)
@@ -326,12 +332,15 @@ class MainWindow(QMainWindow):
             containing the holo arguments in the form [[holo1_name,{holo1_args}],...]
         """
         self.holos = []
-        for name,args in holo_list:
-            holo_params = {'name':name}
-            holo_params['type'],holo_params['function'] = get_holo_type_function(name)
-            holo_params = {**holo_params,**args}
-            holo = get_holo_container(holo_params,self.global_holo_params)
-            self.holos.append(holo)
+        for i,(name,args) in enumerate(holo_list):
+            try:
+                holo_params = {'name':name}
+                holo_params['type'],holo_params['function'] = get_holo_type_function(name)
+                holo_params = {**holo_params,**args}
+                holo = get_holo_container(holo_params,self.global_holo_params)
+                self.holos.append(holo)
+            except Exception as e:
+                error('Error when creating Hologram {}. The hologram has been skipped.\n'.format(i),e)
         self.update_holo_list()
         self.w = None
 
@@ -350,6 +359,11 @@ class MainWindow(QMainWindow):
             f.write(str(msg))
         info('SLM settings and holograms saved to "{}"'.format(filename))
     
+    def save_current_holo_dialogue(self):
+        filename = QFileDialog.getSaveFileName(self, 'Save hologram',self.last_SLMparam_folder,"PNG (*.png);;24-bit Bitmap (*.bmp)")[0]
+        if filename != '':
+            hg.misc.save(self.total_holo,filename)
+
     def save_holo_file_dialogue(self):
         filename = QFileDialog.getSaveFileName(self, 'Save SLMparam',self.last_SLMparam_folder,"Text documents (*.txt)")[0]
         if filename != '':
