@@ -26,7 +26,27 @@ def save(hologram,filename):
     image = Image.fromarray(rgb,"RGB")
     image.save(filename)
 
-def load(filename):
+def load(filename='zernike_phase_correction.png'):
+    """
+    Load a hologram from a saved image file.
+    The image can either be bmp or png.
+
+        Parameters
+    ----------
+    filename : string
+        filename of the hologram to load
+
+    Returns
+    -------
+    array
+        lens hologram normalised 0-1
+    
+    """
+    filename = str(filename)
+    filename = filename.replace('"', '')
+    filename = filename.replace("'",'')
+    if filename[0:4] == 'file':
+        filename = filename[8:]
     image = Image.open(filename)
     array = np.array(image)
     red = array[:,:,0]

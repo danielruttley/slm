@@ -40,14 +40,14 @@ def load_traps_from_image(filename,scale=1,shape=(512,512)):
     array = prepare_image(array,scale,shape)
     [ys,xs] = np.where(array)
     ymin = 256
-    xmin = 220
+    xmin = 256
     traps = [(x+xmin,y+ymin) for y,x in zip(ys,xs)]
     return traps
 
 if __name__ == '__main__':
     scale = 3
     shape = (512,512)
-    traps = load_traps_from_image('qsumPixel2.png',scale,shape)
+    traps = load_traps_from_image('RbCs.png',scale,shape)
     print(traps)
     print(len(traps))
     array = np.zeros(shape)
