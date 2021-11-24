@@ -297,7 +297,7 @@ class ArrayGenerator():
                                 + c*((y-y0)**2)))
         return g.ravel()
 
-    def find_traps(self,array,plot=False,width=15,min_distance_between_traps=30):
+    def find_traps(self,array,plot=False,width=2,min_distance_between_traps=5):
         popts = []
         perrs = []
         cam_roi = self.cam.get_roi()
