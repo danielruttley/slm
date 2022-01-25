@@ -63,6 +63,16 @@ class HoloContainer(Container):
 
     def update_arg(self,arg_name,arg_value):
         if arg_name in inspect.getfullargspec(self.function)[0]:
+            if (arg_name == 'azimuthal') | (arg_name == 'radial'):
+                arg_value = round(arg_value)
+            if (arg_name == 'azimuthal') and (arg_value%2 != self.args['radial']%2):
+                if self.args['radial'] != arg_value:
+                    self.args['radial'] = abs(arg_value)
+                    print('setting radial to {} so that Zernike polynomial is valid'.format(abs(arg_value)))
+            if (arg_name == 'radial') and (arg_value%2 != self.args['azimuthal']%2):
+                if self.args['azimuthal'] != arg_value:
+                    self.args['azimuthal'] = arg_value
+                    print('setting azimuthal to {} so that Zernike polynomial is valid'.format(arg_value))
             self.args[arg_name] = arg_value
             self.calculate_holo()
         else:
