@@ -48,6 +48,7 @@ class SLM():
             a 2D array of values from 0-1 to be applied in the top-left
             of the SLM screen, representing phase modulation from 0-2pi
         """
+        hologram = hologram%1
         self.hologram = hologram
         hologram = np.uint16(hologram*65535)
         if self.lut != None:
