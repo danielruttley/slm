@@ -94,17 +94,23 @@ class Camera():
             max_pixel = image.get_max_pixel(correct_bgnd=False)
             print(exposure,gain,max_pixel)
             if max_pixel < 200:
-                if exposure < 85:
+                if exposure < 0.1:
+                    exposure += 0.1
+                elif exposure < 85:
                     exposure *= 1.1
                 else:
                         gain += 1
-            elif max_pixel > 240:
+            elif max_pixel > 250:
                 if gain > 1:
                     gain -= 1
-                else:
+                elif exposure < 1:
+                    exposure -= 0.1
+                else:                
                     exposure *= 0.9
             else:
                 break
+            if exposure < 0.05:
+                exposure = 0.07
             exposure = self.update_exposure(exposure)
             gain = self.update_gain(gain)
         
