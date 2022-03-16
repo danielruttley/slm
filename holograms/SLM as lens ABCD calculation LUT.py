@@ -89,7 +89,7 @@ def focusPlotter():
             print(i)
         #    Optics path for 1064nm setup using SLM as a lens:
         #    beam -> 35mm lens -> 285mm -> 250mm lens -> SLM (as lens)-> 125mm lens -> 525mm -> 400mm lens -> 0.5m to objective -> 35mm to atoms .
-        M_tweezer = dotter(Mf(0.035), Mx(0.285), Mf(0.250), Mx(0.25), Mf(fs[i]), Mx(0.25), Mf(0.100), Mx(0.500), Mf(0.400), Mx(0.500), Mf(f_obj),  Mx(x_obj))
+        M_tweezer = dotter(Mf(0.035), Mx(0.285), Mf(0.250), Mx(0.25), Mf(fs[i]), Mx(0.275), Mf(0.075), Mx(0.475), Mf(0.400), Mx(0.500), Mf(f_obj),  Mx(x_obj))
         wi, Ri = ABCDsolution(M_tweezer, w0 = 0.0006, R0 = 1000, wavelength = 1064e-9)
         
        # plt.plot((x_obj-0.035)*1e6, wi*1e6, label = str(fs[i]), color = colors[i]) 
