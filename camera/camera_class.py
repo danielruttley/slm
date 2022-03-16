@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import PIL.Image as PILImage
 from shutil import copyfile
+import matplotlib.pyplot as plt
 
 from .uc480 import uc480
 
