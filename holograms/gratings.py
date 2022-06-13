@@ -144,7 +144,7 @@ def vert_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
     if gradient == 0:
         return blank(shape=shape)
-    return (vert(period=512/gradient,shape=shape))%1
+    return (vert(period=512/gradient,shape=shape))%max_mod_depth
 
 def diag(period,**kwargs):
     """
