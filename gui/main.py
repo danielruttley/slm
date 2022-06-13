@@ -551,19 +551,22 @@ class HoloCreationWindow(QWidget):
                     text_box = self.holoParamsLayout.itemAt(self.holoParamsLayout.rowCount()-1, 1).widget()
                     text_box.returnPressed.connect(self.return_holo_params)
                     if (self.editing == True) and (current == self.current_name):
-                        text_box.setText(str(self.current_params[argument]))
+                        try:
+                            text_box.setText(str(self.current_params[argument]))
+                            continue
+                        except:
+                            pass
+                    if argument == 'x0':
+                        text_box.setText(str(slm_settings['beam x0']))
+                    elif argument == 'y0':
+                        text_box.setText(str(slm_settings['beam y0']))
+                    elif argument == 'radius':
+                        radius = min([slm_settings['x size']-slm_settings['beam x0'],
+                                    slm_settings['y size']-slm_settings['beam y0'],
+                                    slm_settings['beam x0'],slm_settings['beam y0']])
+                        text_box.setText(str(radius))
                     else:
-                        if argument == 'x0':
-                            text_box.setText(str(slm_settings['beam x0']))
-                        elif argument == 'y0':
-                            text_box.setText(str(slm_settings['beam y0']))
-                        elif argument == 'radius':
-                            radius = min([slm_settings['x size']-slm_settings['beam x0'],
-                                        slm_settings['y size']-slm_settings['beam y0'],
-                                        slm_settings['beam x0'],slm_settings['beam y0']])
-                            text_box.setText(str(radius))
-                        else:
-                            text_box.setText(str(default))
+                        text_box.setText(str(default))
         self.holoDocBox.setText(self.function.__doc__.split('Returns')[0])
 
     def clear_holo_params(self):

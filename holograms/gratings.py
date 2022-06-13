@@ -78,7 +78,7 @@ def hori(period=7,shape=(512,512)):
     blazing = (yy/period)%1
     return blazing
 
-def hori_gradient(gradient=1,shape=(512,512)):
+def hori_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
     Applies a horizontal grating in terms of the gradient of the ramp on the SLM screen.
     A gradient of 1 is 1 ramp over the entire screen, a gradient of 2 is 2 ramps over 
@@ -88,6 +88,9 @@ def hori_gradient(gradient=1,shape=(512,512)):
     ----------
     gradient : float
         the gradient of the 2pi modulation. period = 512/gradient.
+    max_mod_depth : float
+        the maximum modulation depth to use. This should typically be 1 unless
+        deliberately trying to reduce the diffraction efficiency.
 
     Returns
     -------
@@ -96,7 +99,7 @@ def hori_gradient(gradient=1,shape=(512,512)):
     """
     if gradient == 0:
         return blank(shape=shape)
-    return hori(period=512/gradient,shape=shape)
+    return (hori(period=512/gradient,shape=shape))%max_mod_depth
     
 def vert(period=7,shape=(512,512)):
     """
@@ -120,7 +123,7 @@ def vert(period=7,shape=(512,512)):
     blazing = (xx/period)%1
     return blazing
 
-def vert_gradient(gradient=1,shape=(512,512)):
+def vert_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
     Applies a vertical grating in terms of the gradient of the ramp on the SLM screen.
     A gradient of 1 is 1 ramp over the entire screen, a gradient of 2 is 2 ramps over 
@@ -130,6 +133,9 @@ def vert_gradient(gradient=1,shape=(512,512)):
     ----------
     gradient : float
         the gradient of the 2pi modulation. period = 512/gradient.
+    max_mod_depth : float
+        the maximum modulation depth to use. This should typically be 1 unless
+        deliberately trying to reduce the diffraction efficiency.
 
     Returns
     -------
@@ -138,7 +144,7 @@ def vert_gradient(gradient=1,shape=(512,512)):
     """
     if gradient == 0:
         return blank(shape=shape)
-    return vert(period=512/gradient,shape=shape)
+    return (vert(period=512/gradient,shape=shape))%1
 
 def diag(period,**kwargs):
     """
