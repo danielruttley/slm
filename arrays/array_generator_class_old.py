@@ -15,17 +15,10 @@ from math import log10,floor,ceil
 import holograms as hg
 from .image_loading import load_traps_from_image
 
-import sys
-sys.path.append('..')
-from holograms.arrays import aags
-
 class ArrayGenerator():
     def __init__(self,slm,camera,image_handler,extra_holos=None,
                  shape=(512,512),circ_aper_center=None,circ_aper_radius=None,
-                 calibration_blazing=None, input_waist=None, 
-                 input_center=(256,256),correction_factor=0.5,
-                 min_distance_between_traps=3,
-                 remove_low_zernike=True,padding=1):
+                 calibration_blazing=None):
         """Generates and iteratively improves Gerchberg Saxton holograms for 
         arrays of Gaussian traps.
 
@@ -58,13 +51,6 @@ class ArrayGenerator():
         self.circ_aper_radius = circ_aper_radius
         self.extra_holos = extra_holos
         self.calibration_blazing = calibration_blazing
-        self.padding = padding
-
-        self.input_waist = input_waist
-        self.input_center = input_center
-        self.correction_factor = correction_factor
-        self.min_distance_between_traps = min_distance_between_traps
-        self.remove_low_zernike = remove_low_zernike
 
         self.intensity_correction_iteration = 0
 
@@ -76,6 +62,40 @@ class ArrayGenerator():
 
         self.imager.create_dirs()
         self.trap_df_filename = self.imager.get_dir()+'/trap_df.csv'
+
+        self.generate_input_intensity()
+
+    def generate_input_intensity(self,waist=None,center=None):
+        """Defines the Gaussian intensity incident onto the SLM and stores it 
+        as a parameter.
+
+        Parameters
+        ----------
+        waist : float, optional
+            The 1/e^2 waist of the beam, in SLM pixels. if waist is None, then 
+            a uniform intensity is assumed.
+        center : tuple of float, optional
+            The center of the beam, in SLM pixels. if center is None, the beam 
+            is centered on the SLM.
+
+        Returns
+        -------
+        None
+        """
+        xx,yy = np.meshgrid(np.arange(self.shape[0]),np.arange(self.shape[1]))
+        if waist is None:
+            I = np.ones(self.shape)
+        else:
+            if center is None:
+                center = tuple(x/2 for x in self.shape)
+            xx = xx - center[0]
+            yy = yy - center[1]
+            r = np.sqrt(xx**2+yy**2)
+            I = np.exp(-2*r**2/waist**2)
+            I = I/np.max(I)
+        if self.circ_aper_center is not None:
+            I = hg.apertures.circ(I,x0=self.circ_aper_center[0],y0=self.circ_aper_center[1],radius=self.circ_aper_radius)
+        self.input_intensity = I
 
     def set_traps(self,traps):
         """Set the location of the Gaussian traps to be used in the array.
@@ -116,10 +136,45 @@ class ArrayGenerator():
         None
             The created hologram is saved to the object's array_holo parameter.
         """
-        if traps == None:
+        if traps is None:
             traps = self.traps
-        holo = aags(traps,iterations,self.padding,self.input_waist,self.input_center,
-                    self.shape,remove_low_zernike=self.remove_low_zernike)
+        for trap in traps:
+            self.T[trap] = 1
+        N = len(traps)
+        print('Initial array generation: {} traps'.format(N))
+        phi = (np.random.rand(*self.shape))*2*np.pi
+        prev_g = np.ones(self.shape)
+
+        for i in range(iterations):
+            print(i)
+            u_plane = fftshift(fft2(np.sqrt(self.input_intensity)*np.exp(1j*phi)))
+            B = np.abs(u_plane)
+            psi = np.angle(u_plane)
+            if i == N:
+                print('i==N, saving psi for all future iterations')
+                self.psi_N = psi
+            elif i>N:
+                print('i>N, using psi from i==N')
+                psi = self.psi_N
+            
+            B_N = 0
+            for trap in traps:
+                B_N += B[trap]
+            B_N /= N
+            
+            g = np.zeros(self.shape)
+            for trap in traps:
+                g[trap] = B_N/B[trap]*prev_g[trap]
+            B = self.T*g
+            prev_g = g
+            x_plane = ifft2(ifftshift(B * np.exp(1j*psi)))
+            phi = np.angle(x_plane)
+        if self.psi_N is None:
+            print('Warning: did not run for more iterations than traps.')
+            print('Saving the last generated psi as psi_N.')
+            self.psi_N = psi
+        self.phi = phi
+        holo = (phi%(2*np.pi))/2/np.pi
         if self.circ_aper_center is not None:
             holo = hg.apertures.circ(holo,x0=self.circ_aper_center[0],y0=self.circ_aper_center[1],radius=self.circ_aper_radius)
         if self.extra_holos is not None:
@@ -155,13 +210,12 @@ class ArrayGenerator():
             time.sleep(0.5)
             self.cam.auto_gain_exposure()
             image = self.cam.take_image()
-            # self.slm.apply_hologram(hg.blank())
-            # time.sleep(0.5)
-            # bgnd = self.cam.take_image()
-            # image.add_background(bgnd)
+            self.slm.apply_hologram(hg.blank())
+            time.sleep(0.5)
+            bgnd = self.cam.take_image()
+            image.add_background(bgnd)
             image.add_hologram(self.array_holo)
-            # array = image.get_bgnd_corrected_array()
-            array = image.get_array_float()
+            array = image.get_bgnd_corrected_array()
             image.add_property('intensity_correction_iteration',self.intensity_correction_iteration)
             image.add_property('rep',i)
             self.imager.save(image)
@@ -173,15 +227,11 @@ class ArrayGenerator():
         popts = np.average(np.asarray(poptss), axis=0).T.tolist()
         perrs = np.average(np.asarray(perrss), axis=0).T.tolist()
         print(popts,perrs)
-        
         for arg,popt,perr in zip(self.gaussian2D.__code__.co_varnames[2:],popts,perrs):
             self.trap_df[arg] = popt
             self.trap_df[arg+'_err'] = perr
             self.trap_df[arg+'_'+str(self.intensity_correction_iteration)] = self.trap_df[arg]
             self.trap_df[arg+'_err_'+str(self.intensity_correction_iteration)] = self.trap_df[arg+'_err']
-        holo_Is = [x[2] for x in self.traps]
-        self.trap_df['holo_I'] = holo_Is
-        self.trap_df['holo_I'+str(self.intensity_correction_iteration)] = holo_Is
         self.save_trap_df()
 
     def generate_corrected_hologram(self,iterations=50):
@@ -199,29 +249,38 @@ class ArrayGenerator():
             The created hologram is saved to the object's array_holo parameter.
         """
         self.intensity_correction_iteration += 1
-        average_I = self.trap_df['I0'].mean()
-        self.traps = []
+        I0_N = self.trap_df['I0'].mean()
         for i, row in self.trap_df.iterrows():
             x = int(row['holo_x'])
-            y = int(row['holo_y'])       
-            I_new = row['holo_I'] * (row['target_I']/self.trap_df['target_I'].mean()/(row['I0']/average_I))**self.correction_factor
-            self.traps.append((y,x,I_new))
-            # self.T[trap[:2]] /= np.sqrt((row['I0']/I)/(self.trap_df['holo_I'].mean()/I0_N))
-            # G = 0.7
-            # self.T[trap[:2]] = np.sqrt((I0_N*I) / (1-G*(1-row['I0']/(I0_N*I))))
-            print('================')
-            print('target_I',row['target_I'])
-            print('average_measured_I',average_I)
-            print('average_target_I',self.trap_df['target_I'].mean())
-            print('measured I',row['I0'])
-            print('prev holo_I',row['holo_I'])
-            print('new holo_I',I_new)
-            print('\n')
+            y = int(row['holo_y'])
+            trap = (y,x)
+            self.T[trap] *= np.sqrt(I0_N/row['I0'])
         N = len(self.traps)
         print('Corrected array generation: {} traps'.format(N))
-        self.array_holo = aags(self.traps,iterations,self.padding,self.input_waist,
-                               self.input_center,self.shape,
-                               remove_low_zernike=self.remove_low_zernike)
+        prev_g = np.ones(self.shape)
+        phi = self.phi
+
+        for i in range(iterations):
+            print(i)
+            u_plane = fftshift(fft2(np.sqrt(self.input_intensity)*np.exp(1j*phi)))
+            B = np.abs(u_plane)
+            print('Using psi from i==N')
+            psi = self.psi_N
+            
+            B_N = 0
+            for trap in self.traps:
+                B_N += B[trap]/self.T[trap]
+            B_N /= N
+            
+            g = np.zeros(self.shape)
+            for trap in self.traps:
+                g[trap] = (B_N/B[trap]*self.T[trap])*prev_g[trap]
+            B = self.T*g
+            prev_g = g
+            x_plane = ifft2(ifftshift(B * np.exp(1j*psi)))
+            phi = np.angle(x_plane)
+        self.phi = phi
+        self.array_holo = (phi%(2*np.pi))/2/np.pi
         if self.circ_aper_center is not None:
             self.array_holo = hg.apertures.circ(self.array_holo,x0=self.circ_aper_center[0],y0=self.circ_aper_center[1],radius=self.circ_aper_radius)
         if self.extra_holos is not None:
@@ -238,12 +297,10 @@ class ArrayGenerator():
                                 + c*((y-y0)**2)))
         return g.ravel()
 
-    def find_traps(self,array,plot=False,width=2):
-        min_distance_between_traps = self.min_distance_between_traps
+    def find_traps(self,array,plot=False,width=2,min_distance_between_traps=5):
         popts = []
         perrs = []
         cam_roi = self.cam.get_roi()
-        show = True
         for i, row in self.trap_df.iterrows():
             print(i)
             x0 = row['img_x']
@@ -262,17 +319,6 @@ class ArrayGenerator():
                 ymax = min(round(y0+min_distance_between_traps*0.75),array.shape[0])
             print(xmin,ymin,xmax,ymax)
             roi = array[ymin:ymax,xmin:xmax]
-            if show:
-                plt.figure()
-                plt.imshow(array)
-                plt.show(block=False)
-                plt.pause(3)
-                plt.close()
-                show = False
-            # plt.figure()
-            # plt.imshow(roi)
-            # plt.show()
-            # time.sleep(10)
             print('array_max',np.max(array))
             print('roi_max',np.max(roi))
             max_val = np.max(array)
@@ -308,7 +354,7 @@ class ArrayGenerator():
             for popt in popts:
                 fitted_img += self.gaussian2D((x,y),*popt).reshape(array.shape[0],array.shape[1])
 
-            fig, (ax1,ax2) = plt.subplots(2, 1)
+            fig, (ax1,ax2) = plt.subplots(1, 2)
             fig.set_size_inches(9, 5)
             fig.set_dpi(100)
             c1 = ax1.pcolormesh(x,y,array,cmap=plt.cm.gray,shading='auto')
@@ -320,9 +366,7 @@ class ArrayGenerator():
             ax2.set_title('fitted array')
             fig.colorbar(c2,ax=ax2,label='intensity (arb.)')
             fig.tight_layout()
-            plt.show(block=False)
-            plt.pause(3)
-            plt.close()
+            plt.show()
         return popts,perrs
 
     def get_single_trap_coords(self):
@@ -331,10 +375,6 @@ class ArrayGenerator():
             print('---TRAP {} OF {}---'.format(i+1,len(self.traps)))
             self.trap_df.loc[i,'holo_x'] = trap[1]
             self.trap_df.loc[i,'holo_y'] = trap[0]
-            try:
-                self.trap_df.loc[i,'target_I'] = trap[2]
-            except IndexError: # if intensity not specified set as 1
-                self.trap_df.loc[i,'target_I'] = 1
             try:
                 need_to_measure = np.isnan(self.trap_df.loc[i,'img_x']) or np.isnan(self.trap_df.loc[i,'img_x'])
             except KeyError:
@@ -346,13 +386,12 @@ class ArrayGenerator():
                 time.sleep(0.5)
                 self.cam.auto_gain_exposure()
                 image = self.cam.take_image()
-                # self.slm.apply_hologram(hg.blank())
-                # time.sleep(0.5)
-                # bgnd = self.cam.take_image()
-                # image.add_background(bgnd)
+                self.slm.apply_hologram(hg.blank())
+                time.sleep(0.5)
+                bgnd = self.cam.take_image()
+                image.add_background(bgnd)
                 
-                # array = image.get_bgnd_corrected_array()
-                array = image.get_array_float()
+                array = image.get_bgnd_corrected_array()
                 x,y = np.meshgrid(np.arange(array.shape[1]),np.arange(array.shape[0]))
                 cent_ind = [x for x in np.unravel_index(array.argmax(), array.shape)]
                 if cam_roi is not None:

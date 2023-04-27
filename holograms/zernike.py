@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from .apertures import circ
 
 def R(r,radial,azimuthal):
@@ -62,6 +63,34 @@ def zernike(radial=0,azimuthal=0,amplitude=1,x0=None,y0=None,radius=None,shape=(
     phase = circ(phase,x0,y0,radius)
     # if wrap_phase:
     #     phase = phase%1
-    print(np.max(phase))
-    print(np.min(phase))
     return phase
+
+def zernike_decomp(holo,max_radial=4,center=(256,256)):
+    results_df = pd.DataFrame()
+    
+    for radial in range(max_radial+1):
+        for azimuthal in np.arange(-radial,radial+2,2):
+            print('getting polynomial radial = {}, azimuthal = {} amplitude'.format(radial,azimuthal))
+            results_row = pd.DataFrame()
+            results_row.loc[0,'zernike_radial'] = int(radial)
+            results_row.loc[0,'zernike_azimuthal'] = int(azimuthal)
+            zernike_holo = zernike(radial,azimuthal,1,shape=holo.shape,x0=center[0],y0=center[1])
+            coeff = np.sum(holo*zernike_holo)/np.sum(zernike_holo**2)
+            results_row.loc[0,'fit_amp'] = coeff
+            results_df = results_df.append(results_row,ignore_index=True)
+
+    return results_df
+    
+def remove_low_zernikes(holo,max_radial=4,center=(256,256)):
+    results_df = zernike_decomp(holo,max_radial)
+    
+    indicies_to_ignore = [[1,1],[1,-1]]
+    
+    for index, row in results_df.iterrows():
+        poly_index = [int(row.loc['zernike_radial']),int(row.loc['zernike_azimuthal'])]
+        if poly_index not in indicies_to_ignore:
+            print('removing polynomial radial = {}, azimuthal = {} (amp = {})'.format(*poly_index,row.loc['fit_amp']))
+            contrib = zernike(*poly_index,row.loc['fit_amp'],shape=holo.shape,x0=center[0],y0=center[1])
+            holo -= contrib
+    
+    return holo

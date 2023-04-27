@@ -22,8 +22,8 @@ import holograms as hg
 from slm import SLM
 
 hologram_functions = {'grating':hg.gratings.grating,'vertical grating':hg.gratings.vert,'vertical grating (gradient)':hg.gratings.vert_gradient,'horizontal grating':hg.gratings.hori,'horizontal grating (gradient)':hg.gratings.hori_gradient,'lens':hg.lenses.lens,'lens (focal shift)':hg.lenses.focal_plane_shift,
-                      'zernike polynomial':hg.zernike,'array':hg.arrays.aags,'image':hg.misc.load}
-aperture_functions = {'circular aperture':hg.apertures.circ,'vertical aperture':hg.apertures.vert,'horizontal aperture':hg.apertures.hori}
+                      'zernike polynomial':hg.zernike,'array':hg.arrays.aags,'array (random mixing)':hg.arrays.mixed_array,'image':hg.misc.load}
+aperture_functions = {'circular aperture':hg.apertures.circ,'vertical aperture':hg.apertures.vert,'horizontal aperture':hg.apertures.hori,'elliptical aperture':hg.apertures.ellipse}
 cam_functions = {'LG superposition':hg.complex_amp_mod.superposition}
 
 red = QColor(255,0,0)
@@ -251,12 +251,25 @@ class MainWindow(QMainWindow):
     def get_global_holo_params(self):
         return self.global_holo_params
 
-    def add_holo(self,holo_params):
+    def add_holo(self,holo_params,index=None):
+        """Add a hologram to the list. If an index is specified, the hologram
+        will overwrite the entry in the holo_list at that point.
+        
+        Parameters
+        ----------
+        holo_params : dict
+        index : int or None
+        """
         holo_params = {**holo_params,**self.global_holo_params}
+        print(holo_params)
         try:
             holo = get_holo_container(holo_params,self.global_holo_params)
-            self.holos.append(holo)
-            self.holoList.addItem(holo.get_label())
+            if index is None:
+                self.holos.append(holo)
+                self.holoList.addItem(holo.get_label())
+            else:
+                self.holos[index] = holo
+                print(index)
             self.w = None
             self.update_holo_list()
         except Exception as e:
@@ -317,6 +330,7 @@ class MainWindow(QMainWindow):
             elif holo.get_type() == 'cam':
                 self.total_holo = holo.get_cam_holo(self.total_holo)
             else:
+                print('force calc',holo.force_recalculate)
                 self.total_holo += holo.get_holo()
         # print(self.total_holo)
         self.slm.apply_hologram(self.total_holo)
@@ -381,7 +395,8 @@ class MainWindow(QMainWindow):
         elif command == 'save_all':
             self.save_holo_file(arg)
         elif command == 'load_all':
-            self.load_holo_file(arg)
+            pass
+            # self.load_holo_file(arg)
         elif command == 'set_data':
             for update in eval(arg):
                 try:
@@ -578,8 +593,8 @@ class HoloCreationWindow(QWidget):
         holo_params = {'name':self.holoSelector.currentText()}
         holo_params['function'] = self.function
         holo_params['type'] = self.type
-        if self.editing == True:
-            holo_params = {}
+        # if self.editing == True:
+        #     holo_params = {}
         for row in range(self.holoParamsLayout.rowCount()):
             key = self.holoParamsLayout.itemAt(row,0).widget().text()
             widget = self.holoParamsLayout.itemAt(row,1).widget()
@@ -600,10 +615,11 @@ class HoloCreationWindow(QWidget):
                         pass
             holo_params[key] = value
         if self.editing == True:
-            holo_list = self.current_holo_list.copy()
-            holo_list[self.edit_holo] = [self.holoSelector.currentText(),holo_params]
-            # print(holo_list)
-            self.mainWindow.set_holos_from_list(holo_list)
+            # holo_list = self.current_holo_list.copy()
+            # holo_list[self.edit_holo] = [self.holoSelector.currentText(),holo_params]
+            # # print(holo_list)
+            # self.mainWindow.set_holos_from_list(holo_list)
+            self.mainWindow.add_holo(holo_params,self.edit_holo)
         else:
             self.mainWindow.add_holo(holo_params)
 

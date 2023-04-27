@@ -2,12 +2,30 @@ import numpy as np
 import random
 from math import floor
 
-def chunks(lst, n):
+def chunks(lst, n, weights=None):
     """Yield successive n-sized chunks from list."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+    if weights is None: # old method assuming all weights are 1
+        indexes = []
+        for i in range(0, len(lst), n):
+            indexes.append(lst[i:i + n])
+    else:
+        total_weight = np.sum(weights)
+        list_len = len(lst)
+        indexes = []
+        for weight in weights:
+            cut_index = round(weight/total_weight*list_len)
+            # print(cut_index)
+            indexes.append(lst[:cut_index])
+            del lst[:cut_index]
+        while len(lst) > 0:
+            holo_num = np.random.randint(0,len(indexes))
+            indexes[holo_num].append(lst[-1])
+            del lst[-1]
+        # print(list(indexes))
+    return indexes
+        
 
-def mix(holograms):
+def mix(holograms, weights=None):
     """Returns a hologram consisting of an equal number of pixels from each 
     of the mixed holograms, randomly distributed
 
@@ -21,13 +39,15 @@ def mix(holograms):
     array
         the mixed hologram
     """
+    np.random.seed(1065)
     shape = holograms[0].shape
     size = holograms[0].size
     holograms = [array.reshape(size) for array in holograms]
     mixed_holo = np.empty_like(holograms[0])
-    split_inds = list(range(size))
-    random.shuffle(split_inds)
-    split_inds = list(chunks(split_inds,floor(size/len(holograms))))
+    indexes = list(range(size))
+    np.random.shuffle(indexes)
+    split_inds = list(chunks(indexes,floor(size/len(holograms)),weights=weights))
+    print(split_inds)
     for inds,holo in zip(split_inds,holograms):
         for ind in inds:
             mixed_holo[ind] = holo[ind]
@@ -44,5 +64,5 @@ if __name__ == "__main__":
     holo4 = np.ones((7,7))*3
     holo5 = np.ones((7,7))*4
     
-    mixed = mix([holo1,holo2,holo3,holo4,holo5])
-    print(mixed)
+    mixed = mix([holo1,holo2,holo3,holo4,holo5])#,weights=[1,2,1,1,1])
+    # print(mixed)

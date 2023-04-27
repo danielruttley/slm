@@ -56,7 +56,7 @@ def grating_gradient(gradient=73,angle=0,shape=(512,512)):
         return blank(shape=shape)
     return grating(512/gradient,angle,shape)
 
-def hori(period=7,shape=(512,512)):
+def hori(period=7,max_mod_depth=1,shape=(512,512)):
     """
     This function generates a 2D horizontally striped grating pattern (such 
     that the phase ramp is in the vertical direction).
@@ -65,6 +65,9 @@ def hori(period=7,shape=(512,512)):
     ----------
     period : float
         the period of one 2pi phase modulation, in SLM pixels
+    max_mod_depth : float
+        the maximum modulation depth to use. This should typically be 1 unless
+        deliberately trying to reduce the diffraction efficiency.
     
     Returns
     -------
@@ -76,7 +79,7 @@ def hori(period=7,shape=(512,512)):
     y = range(-origin[1],shape[1]-origin[1])
     xx,yy = np.meshgrid(x,y)
     blazing = (yy/period)%1
-    return blazing
+    return blazing%max_mod_depth
 
 def hori_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
@@ -99,9 +102,9 @@ def hori_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
     if gradient == 0:
         return blank(shape=shape)
-    return (hori(period=512/gradient,shape=shape))%max_mod_depth
+    return hori(period=512/gradient,max_mod_depth=max_mod_depth,shape=shape)
     
-def vert(period=7,shape=(512,512)):
+def vert(period=7,max_mod_depth=1,shape=(512,512)):
     """
     This function generates a 2D vertically striped grating pattern (such that 
     the phase ramp is in the horizontal direction).
@@ -110,6 +113,9 @@ def vert(period=7,shape=(512,512)):
     ----------
     period : float
         the period of one 2pi phase modulation, in SLM pixels
+    max_mod_depth : float
+        the maximum modulation depth to use. This should typically be 1 unless
+        deliberately trying to reduce the diffraction efficiency.
 
     Returns
     -------
@@ -121,7 +127,7 @@ def vert(period=7,shape=(512,512)):
     y = range(-origin[1],shape[1]-origin[1])
     xx,yy = np.meshgrid(x,y)
     blazing = (xx/period)%1
-    return blazing
+    return blazing%max_mod_depth
 
 def vert_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
@@ -144,7 +150,7 @@ def vert_gradient(gradient=1,max_mod_depth=1,shape=(512,512)):
     """
     if gradient == 0:
         return blank(shape=shape)
-    return (vert(period=512/gradient,shape=shape))%max_mod_depth
+    return vert(period=512/gradient,max_mod_depth=max_mod_depth,shape=shape)
 
 def diag(period,**kwargs):
     """

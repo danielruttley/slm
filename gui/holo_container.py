@@ -79,7 +79,9 @@ class HoloContainer(Container):
             raise NameError('{} is not a parameter for {} hologram'.format(arg_name,self.name))
 
     def get_holo(self):
+        print('getting holo')
         if self.force_recalculate:
+            print(self.force_recalculate,'calculating holo')
             self.calculate_holo()
             self.force_recalculate = False
         return self.holo
