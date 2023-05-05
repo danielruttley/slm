@@ -122,6 +122,10 @@ class MainWindow(QMainWindow):
         self.slmSettingsAction = QAction(self)
         self.slmSettingsAction.setText("SLM settings")
 
+        self.restoreParamsAfterMultirunAction = QAction(self,checkable=True)
+        self.restoreParamsAfterMultirunAction.setText("Restore SLMparams after multirun")
+        self.restoreParamsAfterMultirunAction.setChecked(True)
+
     def _createMenuBar(self):
         menuBar = self.menuBar()
         mainMenu = menuBar.addMenu("Menu")
@@ -131,6 +135,8 @@ class MainWindow(QMainWindow):
         mainMenu.addAction(self.saveCurrentHoloAction)
         mainMenu.addSeparator()
         mainMenu.addAction(self.slmSettingsAction)
+        mainMenu.addSeparator()
+        mainMenu.addAction(self.restoreParamsAfterMultirunAction)
     
     def _createToolBars(self):
         holoToolBar = self.addToolBar("Hologram creation")
@@ -199,7 +205,7 @@ class MainWindow(QMainWindow):
     def get_slm_settings(self):
         return self.slm_settings
     
-    def update_slm_settings(self,slm_settings):
+    def update_slm_settings(self,slm_settings,update_holo_list=True):
         old_slm_settings = self.slm_settings
         new_slm_settings = {**self.slm_settings,**slm_settings}
         for setting in slm_settings.keys():
@@ -227,12 +233,14 @@ class MainWindow(QMainWindow):
         for setting in new_slm_settings.keys():
             self.slm_settings[setting] = new_slm_settings[setting]
         self.update_global_holo_params()
-        try:
-            self.slm
-        except AttributeError:
-            pass
-        else:
-            self.update_holo_list()
+
+        if update_holo_list: # allow this to be supressed when loading in an SLMparams file
+            try:
+                self.slm
+            except AttributeError:
+                pass
+            else:
+                self.update_holo_list()
         self.slm_settings_window = None
 
     def update_global_holo_params(self):
@@ -330,9 +338,7 @@ class MainWindow(QMainWindow):
             elif holo.get_type() == 'cam':
                 self.total_holo = holo.get_cam_holo(self.total_holo)
             else:
-                print('force calc',holo.force_recalculate)
                 self.total_holo += holo.get_holo()
-        # print(self.total_holo)
         self.slm.apply_hologram(self.total_holo)
 
     def set_holos_from_list(self,holo_list):
@@ -395,8 +401,10 @@ class MainWindow(QMainWindow):
         elif command == 'save_all':
             self.save_holo_file(arg)
         elif command == 'load_all':
-            pass
-            # self.load_holo_file(arg)
+            if self.restoreParamsAfterMultirunAction.isChecked():
+                self.load_holo_file(arg)
+            else:
+                info("Not restoring SLMparams because 'Restore SLMparams after multirun' is unchecked")
         elif command == 'set_data':
             for update in eval(arg):
                 try:
@@ -409,7 +417,7 @@ class MainWindow(QMainWindow):
                     error('{} is an invalid argument for Hologram {}\n'.format(arg_name,ind))
                 except IndexError as e: 
                     error('Hologram {} does not exist\n'.format(ind))
-        self.update_holo_list()
+            self.update_holo_list()
     
     def load_holo_file_dialogue(self):
         filename = QFileDialog.getOpenFileName(self, 'Load SLMparam',self.last_SLMparam_folder,"Text documents (*.txt)")[0]
@@ -428,11 +436,10 @@ class MainWindow(QMainWindow):
             msg = eval(msg)
             slm_settings = msg[0]
             holo_list = msg[1]
-            self.update_slm_settings(slm_settings)
+            self.update_slm_settings(slm_settings,update_holo_list=False)
             try:
                 self.slm
             except AttributeError:
-                # info('SLM settings loaded from "{}"'.format(filename))
                 pass
             else:
                 self.set_holos_from_list(holo_list)
