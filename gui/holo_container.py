@@ -7,6 +7,24 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import holograms as hg
 import time
 
+
+class ArgsDict(dict):
+    def __getitem__(self,key):
+        return dict.__getitem__(self,key)
+    def __setitem__(self, key, value):
+        value = int(value)
+        if not 1 <= value <= 10:
+            raise ValueError('{v} not in range [1,10]'.format(v=value))
+        dict.__setitem__(self,key,value)
+    def __delitem__(self, key):
+        dict.__delitem__(self,key)
+    def __iter__(self):
+        return dict.__iter__(self)
+    def __len__(self):
+        return dict.__len__(self)
+    def __contains__(self, x):
+        return dict.__contains__(self,x)
+
 def get_holo_container(holo_params,global_holo_params):
         if holo_params['type'] == 'aperture':
             holo = ApertureContainer(holo_params,global_holo_params)
@@ -19,9 +37,17 @@ def get_holo_container(holo_params,global_holo_params):
         return holo
 
 class Container():
+    def __init__(self,holo_params,global_holo_params,**kwargs):
+        self.type = None # should be set by child class
+        self.name = holo_params['name']
+        self.function = holo_params['function']
+        self.global_holo_params = global_holo_params
+        self.force_recalculate = False
+        self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
+
     def get_label(self):
         label = self.name+' ('
-        for key in self.local_args.keys():
+        for key in self.get_local_args().keys():
             label += key+'='+str(self.args[key])+', '
         label = label[:-2]
         label += ')'
@@ -40,20 +66,15 @@ class Container():
         return self.args
     
     def get_local_args(self):
-        return self.local_args
+        local_args = self.args.copy()
+        for key in self.global_holo_params:
+            local_args.pop(key, None)
+        return local_args
 
 class HoloContainer(Container):
-    def __init__(self,holo_params,global_holo_params):
-        self.name = holo_params['name']
-        self.function = holo_params['function']
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
         self.type='holo'
-        self.global_holo_params = global_holo_params
-        self.force_recalculate = False
-        self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
-        self.local_args = self.args.copy()
-        for key in global_holo_params:
-            self.local_args.pop(key, None)
-
         self.calculate_holo()
     
     def calculate_holo(self):
@@ -87,16 +108,9 @@ class HoloContainer(Container):
         return self.holo
 
 class ApertureContainer(Container):
-    def __init__(self,holo_params,global_holo_params):
-        self.name = holo_params['name']
-        self.function = holo_params['function']
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
         self.type='aperture'
-        self.global_holo_params = global_holo_params
-        self.force_recalculate = False
-        self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
-        self.local_args = self.args.copy()
-        for key in global_holo_params:
-            self.local_args.pop(key, None)
     
     def apply_aperture(self,holo):
         self.args = {**self.args,**self.global_holo_params}
@@ -112,18 +126,9 @@ class ApertureContainer(Container):
             raise NameError('{} is not a parameter for {}'.format(arg_name,self.name))
 
 class CAMContainer(Container):
-    def __init__(self,holo_params,global_holo_params):
-        self.name = holo_params['name']
-        self.function = holo_params['function']
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
         self.type='cam'
-        self.global_holo_params = global_holo_params
-        self.force_recalculate = False
-        self.args = {k: holo_params[k] for k in inspect.getfullargspec(self.function)[0] if k in holo_params}
-        self.local_args = self.args.copy()
-        self.prev_holos = None
-        self.holo = None
-        for key in global_holo_params:
-            self.local_args.pop(key, None)
     
     def get_cam_holo(self,prev_holos):
         if not array_equal(self.prev_holos,prev_holos):
