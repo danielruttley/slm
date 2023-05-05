@@ -206,8 +206,8 @@ class ArrayGenerator():
         for i, row in self.trap_df.iterrows():
             x = int(row['holo_x'])
             y = int(row['holo_y'])
-            # I_new = row['holo_I'] * (row['target_I']/self.trap_df['target_I'].mean()/(row['I0']/average_I))**self.correction_factor # normalised based off intensity
-            I_new = row['holo_I'] * (row['target_I']/self.trap_df['target_I'].mean()/(row['I0']/average_I)/(row['wx']/average_wx)/(row['wy']/average_wy))**self.correction_factor # normalise based off power
+            I_new = row['holo_I'] * (row['target_I']/self.trap_df['target_I'].mean()/(row['I0']/average_I))**self.correction_factor # normalised based off intensity
+            # I_new = row['holo_I'] * (row['target_I']/self.trap_df['target_I'].mean()/(row['I0']/average_I)/(row['wx']/average_wx)/(row['wy']/average_wy))**self.correction_factor # normalise based off power
             self.traps.append((y,x,I_new))
             # self.T[trap[:2]] /= np.sqrt((row['I0']/I)/(self.trap_df['holo_I'].mean()/I0_N))
             # G = 0.7

@@ -57,7 +57,9 @@ if __name__ == '__main__':
                         bit_depth=cam.get_bit_depth())
 
     correction_factor = 0.2
-    radius_scale = 0.8
+
+    radius = 120
+    radius_scale = 1
 
     exposure = 1
     gain = 0
@@ -76,7 +78,7 @@ if __name__ == '__main__':
 
     holo = load_holos_from_params(r"Z:\Tweezer\Experimental Results\2023\April\26\normaliser_base_no_ZK.txt")
 
-    traps = [(284, 256, 1.04574516), (280, 256, 1.11698361), (276, 256, 0.87086792), (272, 256, 1.02632144), (268, 256, 0.93701741), (264, 256, 0.87218266), (260, 256, 0.86132075), (256, 256, 1.22706198), (252, 256, 1.04249907)]
+    traps = [(284, 256, 1), (280, 256, 1), (276, 256, 1), (272, 256, 1), (268, 256, 1), (264, 256, 1), (260, 256, 1), (256, 256, 1), (252, 256, 1)]
     padding = 1
 
     array_gen = ArrayGenerator(slm,cam,imager,holo,
@@ -94,12 +96,12 @@ if __name__ == '__main__':
     gain = cam.update_gain(gain)
 
     array_gen.generate_initial_hologram(iterations=50)
-    array_gen.array_holo = hg.apertures.ellipse(array_gen.array_holo,x0=center[0],y0=center[1],radius=240,radius_scale=radius_scale)
+    array_gen.array_holo = hg.apertures.ellipse(array_gen.array_holo,x0=center[0],y0=center[1],radius=radius,radius_scale=radius_scale)
     array_gen.get_trap_depths(reps=1,plot=True)
     array_gen.save_trap_df()
     for i in range(50):
         array_gen.generate_corrected_hologram(iterations=50)
-        array_gen.array_holo = hg.apertures.ellipse(array_gen.array_holo,x0=center[0],y0=center[1],radius=240,radius_scale=radius_scale)
+        array_gen.array_holo = hg.apertures.ellipse(array_gen.array_holo,x0=center[0],y0=center[1],radius=radius,radius_scale=radius_scale)
         array_gen.get_trap_depths(reps=1,plot=True)
         print(array_gen.traps)
     array_gen.save_trap_df()

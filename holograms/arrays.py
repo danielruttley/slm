@@ -5,7 +5,7 @@ https://arxiv.org/abs/1903.09286 to form an array of Gaussian traps.
 import numpy as np
 from scipy.fft import fft2,ifft2,fftshift,ifftshift
 from .zernike import remove_low_zernikes
-from .apertures import circ
+from .apertures import circ, ellipse
 from .mixing import mix
 from .gratings import hori_gradient, vert_gradient
 
@@ -75,6 +75,7 @@ def aags(traps='(256,256),(260,256),(256,260),(260,260)',iterations=20,
 
     input_waist = beam_waist
     circ_aper_center = beam_center
+    # aperture_radius_scale = 0.7 # used 27.04.2023 see lab book
 
     if input_waist is None:
         input_intensity = np.ones(shape)
@@ -83,6 +84,8 @@ def aags(traps='(256,256),(260,256),(256,260),(260,260)',iterations=20,
     print(input_intensity)
     if circ_aper_center is not None:
         input_intensity = circ(input_intensity,circ_aper_center[0],circ_aper_center[1])
+        # input_intensity = ellipse(input_intensity,circ_aper_center[0],circ_aper_center[1],radius_scale=aperture_radius_scale)
+        # input_intensity = circ(input_intensity,circ_aper_center[0],circ_aper_center[1],120)
         
     np.random.seed(1064)
     phi = (np.random.rand(*shape))*2*np.pi
